@@ -1,6 +1,10 @@
 // Copyright (c) 2025 GenOrca (by zenoengine). All Rights Reserved.
 
 #include "MCPythonHelper.h"
+#include "WidgetBlueprint.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Widget.h"
+#include "Components/PanelWidget.h"
 #include "Editor.h"
 #include "Subsystems/AssetEditorSubsystem.h"
 #include "Toolkits/AssetEditorToolkit.h"
@@ -1790,5 +1794,173 @@ FString UMCPythonHelper::CompileBlueprint(UBlueprint* Blueprint)
         bHasError ? TEXT("Blueprint compilation failed. Check the output log for details.")
                   : TEXT("Blueprint compiled successfully."));
 
+    return SerializeJsonObj(Result);
+}
+
+// ─── UMG Widget Blueprint Helpers ─────────────────────────────────────────────
+
+namespace
+{
+    static UClass* FindUMGWidgetClass(const FString& TypeName)
+    {
+        static const TMap<FString, FString> TypeMap = {
+            {TEXT("CanvasPanel"),      TEXT("/Script/UMG.CanvasPanel")},
+            {TEXT("TextBlock"),        TEXT("/Script/UMG.TextBlock")},
+            {TEXT("Button"),           TEXT("/Script/UMG.Button")},
+            {TEXT("Image"),            TEXT("/Script/UMG.Image")},
+            {TEXT("HorizontalBox"),    TEXT("/Script/UMG.HorizontalBox")},
+            {TEXT("VerticalBox"),      TEXT("/Script/UMG.VerticalBox")},
+            {TEXT("Border"),           TEXT("/Script/UMG.Border")},
+            {TEXT("Overlay"),          TEXT("/Script/UMG.Overlay")},
+            {TEXT("ScrollBox"),        TEXT("/Script/UMG.ScrollBox")},
+            {TEXT("SizeBox"),          TEXT("/Script/UMG.SizeBox")},
+            {TEXT("CheckBox"),         TEXT("/Script/UMG.CheckBox")},
+            {TEXT("EditableText"),     TEXT("/Script/UMG.EditableText")},
+            {TEXT("EditableTextBox"),  TEXT("/Script/UMG.EditableTextBox")},
+            {TEXT("ProgressBar"),      TEXT("/Script/UMG.ProgressBar")},
+            {TEXT("Slider"),           TEXT("/Script/UMG.Slider")},
+        };
+        const FString* Path = TypeMap.Find(TypeName);
+        if (!Path) return nullptr;
+        return LoadObject<UClass>(nullptr, **Path);
+    }
+
+    static FString UmgErrorJson(const FString& Msg)
+    {
+        TSharedPtr<FJsonObject> Obj = MakeShared<FJsonObject>();
+        Obj->SetBoolField(TEXT("success"), false);
+        Obj->SetStringField(TEXT("message"), Msg);
+        return SerializeJsonObj(Obj);
+    }
+}
+
+FString UMCPythonHelper::UmgGetWidgetInfo(UBlueprint* WidgetBP)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB) return UmgErrorJson(TEXT("Asset is not a WidgetBlueprint."));
+
+    UWidgetTree* WT = WB->WidgetTree;
+    if (!WT) return UmgErrorJson(TEXT("Widget tree is null."));
+
+    TSharedPtr<FJsonObject> Root = MakeShared<FJsonObject>();
+    Root->SetBoolField(TEXT("success"), true);
+
+    if (WT->RootWidget)
+        Root->SetStringField(TEXT("root_widget"), WT->RootWidget->GetName());
+    else
+        Root->SetField(TEXT("root_widget"), MakeShared<FJsonValueNull>());
+
+    TArray<TSharedPtr<FJsonValue>> WidgetArr;
+    WT->ForEachWidget([&](UWidget* W) {
+        TSharedPtr<FJsonObject> WObj = MakeShared<FJsonObject>();
+        WObj->SetStringField(TEXT("name"), W->GetName());
+        WObj->SetStringField(TEXT("type"), W->GetClass()->GetName());
+        if (UWidget* Parent = W->GetParent())
+            WObj->SetStringField(TEXT("parent"), Parent->GetName());
+        WidgetArr.Add(MakeShared<FJsonValueObject>(WObj));
+    });
+
+    Root->SetArrayField(TEXT("widgets"), WidgetArr);
+    Root->SetNumberField(TEXT("widget_count"), WidgetArr.Num());
+
+    return SerializeJsonObj(Root);
+}
+
+FString UMCPythonHelper::UmgAddWidget(UBlueprint* WidgetBP, const FString& WidgetType, const FString& WidgetName, const FString& ParentName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB) return UmgErrorJson(TEXT("Asset is not a WidgetBlueprint."));
+
+    UWidgetTree* WT = WB->WidgetTree;
+    if (!WT) return UmgErrorJson(TEXT("Widget tree is null."));
+
+    UClass* WidgetClass = FindUMGWidgetClass(WidgetType);
+    if (!WidgetClass)
+        return UmgErrorJson(FString::Printf(TEXT("Unknown widget type '%s'."), *WidgetType));
+
+    WT->Modify();
+    UWidget* NewWidget = WT->ConstructWidget<UWidget>(WidgetClass, FName(*WidgetName));
+    if (!NewWidget)
+        return UmgErrorJson(FString::Printf(TEXT("Failed to construct widget '%s'."), *WidgetName));
+
+    FString ActualParent;
+    bool bIsRoot = false;
+
+    if (!ParentName.IsEmpty())
+    {
+        UWidget* ParentWidget = WT->FindWidget(FName(*ParentName));
+        if (!ParentWidget)
+            return UmgErrorJson(FString::Printf(TEXT("Parent widget '%s' not found."), *ParentName));
+
+        UPanelWidget* Panel = Cast<UPanelWidget>(ParentWidget);
+        if (!Panel)
+            return UmgErrorJson(FString::Printf(TEXT("Parent '%s' is not a panel widget."), *ParentName));
+
+        Panel->AddChild(NewWidget);
+        ActualParent = ParentName;
+    }
+    else if (!WT->RootWidget)
+    {
+        WT->RootWidget = NewWidget;
+        bIsRoot = true;
+    }
+    else
+    {
+        UPanelWidget* RootPanel = Cast<UPanelWidget>(WT->RootWidget);
+        if (!RootPanel)
+            return UmgErrorJson(TEXT("Root widget is not a panel. Specify 'parent_name' explicitly."));
+        RootPanel->AddChild(NewWidget);
+        ActualParent = RootPanel->GetName();
+    }
+
+    TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
+    Result->SetBoolField(TEXT("success"), true);
+    Result->SetStringField(TEXT("widget_name"), NewWidget->GetName());
+    Result->SetStringField(TEXT("widget_type"), WidgetType);
+    Result->SetBoolField(TEXT("is_root"), bIsRoot);
+    if (!ActualParent.IsEmpty())
+        Result->SetStringField(TEXT("parent"), ActualParent);
+
+    return SerializeJsonObj(Result);
+}
+
+UWidget* UMCPythonHelper::UmgFindWidget(UBlueprint* WidgetBP, const FString& WidgetName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return nullptr;
+    return WB->WidgetTree->FindWidget(FName(*WidgetName));
+}
+
+FString UMCPythonHelper::UmgRemoveWidget(UBlueprint* WidgetBP, const FString& WidgetName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB) return UmgErrorJson(TEXT("Asset is not a WidgetBlueprint."));
+
+    UWidgetTree* WT = WB->WidgetTree;
+    if (!WT) return UmgErrorJson(TEXT("Widget tree is null."));
+
+    UWidget* Widget = WT->FindWidget(FName(*WidgetName));
+    if (!Widget)
+        return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+
+    WT->Modify();
+
+    UPanelWidget* Parent = Cast<UPanelWidget>(Widget->GetParent());
+    if (Parent)
+    {
+        Parent->RemoveChild(Widget);
+    }
+    else if (WT->RootWidget && WT->RootWidget->GetName() == WidgetName)
+    {
+        WT->RootWidget = nullptr;
+    }
+    else
+    {
+        return UmgErrorJson(FString::Printf(TEXT("Cannot remove '%s': not attached to a panel or root."), *WidgetName));
+    }
+
+    TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
+    Result->SetBoolField(TEXT("success"), true);
+    Result->SetStringField(TEXT("message"), FString::Printf(TEXT("Widget '%s' removed successfully."), *WidgetName));
     return SerializeJsonObj(Result);
 }
