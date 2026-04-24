@@ -26,7 +26,7 @@
 
 ---
 
-Unreal MCP bridges AI assistants (Claude, Cursor, VS Code Copilot) and the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, edit materials, build Blueprint graphs, construct Behavior Trees — all from natural language.
+Unreal MCP bridges AI assistants (Claude, Cursor, VS Code Copilot) and the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, edit materials, build Blueprint graphs, construct Behavior Trees, design UMG Widget Blueprints — all from natural language.
 
 <p align="center">
   <a href="https://youtu.be/V7KyjzFlBLk?si=QaqVqmt6YL59DHg4">
@@ -51,11 +51,12 @@ Unreal MCP bridges AI assistants (Claude, Cursor, VS Code Copilot) and the Unrea
 | **Material System** | Create and connect expressions. Material instance parameters (scalar, vector, texture, static switch). Recompilation. | 11 |
 | **Blueprint Graph** | Read graph structure, nodes, pins, and variables. Add, connect, remove nodes. Build and compile entire graphs. | 10 |
 | **Behavior Tree** | Create and read Behavior Trees. Manage Blackboard assets and keys. Build complete BT hierarchies. | 12 |
+| **UMG Widget Blueprint** | Create Widget Blueprints. Add/remove widgets (15 types). Set properties, canvas slot layout. Compile. | 6 |
 | **Editor Tools** | Selection management. Material/mesh replacement on actors. Blueprint-based replacement. | 6 |
 | **Game Settings** | Game mode configuration. Input action and mapping setup. | 3 |
 | **Utilities** | Output log retrieval for debugging. | 1 |
 
-> **62 tools** across 8 categories — all accessible through natural language.
+> **68 tools** across 9 categories — all accessible through natural language.
 
 ## Installation
 
@@ -148,6 +149,8 @@ Just describe what you want in natural language:
 "Add a PrintString node to BP_Player's EventGraph and connect it to BeginPlay"
 "Build a Blueprint graph with event tick, delta time, and a timeline node"
 "Create a Behavior Tree with a Selector root, two Sequences, and MoveTo/Wait tasks"
+"Create a HUD widget with a health bar and score label, set the text to 'Score: 0'"
+"Add a CanvasPanel root to WBP_MainMenu and place a TextBlock at position (200, 100) with font size 48"
 ```
 
 ## Tools Reference
@@ -241,6 +244,24 @@ Just describe what you want in natural language:
 | `set_blackboard_to_behavior_tree` | Assign Blackboard to BT |
 | `build_behavior_tree` | Build complete BT hierarchy |
 | `list_bt_node_classes` | List available BT node classes |
+
+</details>
+
+<details>
+<summary><strong>UMG Widget Blueprint</strong> (6 tools)</summary>
+
+| Tool | Description |
+|---|---|
+| `create_widget_blueprint` | Create a new Widget Blueprint asset |
+| `get_widget_blueprint_info` | Get widget tree hierarchy and widget list |
+| `add_widget` | Add a widget to the tree (15 supported types) |
+| `set_widget_properties` | Set text, font size, color, visibility, canvas slot layout |
+| `remove_widget` | Remove a widget from the tree |
+| `compile_widget_blueprint` | Compile and validate the Widget Blueprint |
+
+**Supported widget types:** CanvasPanel, TextBlock, Button, Image, HorizontalBox, VerticalBox, Border, Overlay, ScrollBox, SizeBox, CheckBox, EditableText, EditableTextBox, ProgressBar, Slider
+
+**Canvas slot properties** (when parent is CanvasPanel): `slot_position`, `slot_size`, `slot_alignment`, `slot_z_order`
 
 </details>
 

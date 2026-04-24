@@ -9,6 +9,7 @@ from unreal_mcp.tool_routers.editor_router import editor_mcp
 from unreal_mcp.tool_routers.behavior_tree_router import behavior_tree_mcp
 from unreal_mcp.tool_routers.game_router import game_mcp
 from unreal_mcp.tool_routers.blueprint_router import blueprint_mcp
+from unreal_mcp.tool_routers.umg_router import umg_mcp
 
 main_mcp = FastMCP(
     name="Unreal MCP Server",
@@ -25,6 +26,7 @@ main_mcp.mount("editor", editor_mcp)
 main_mcp.mount("behavior_tree", behavior_tree_mcp)
 main_mcp.mount("game", game_mcp)
 main_mcp.mount("blueprint", blueprint_mcp)
+main_mcp.mount("umg", umg_mcp)
 
 def run_server():
     """Entry point function for the Unreal MCP Server"""
