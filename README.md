@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/genorca-unreal-mcp-badge.png)](https://mseep.ai/app/genorca-unreal-mcp)
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/GenOrca/Screenshot/refs/heads/main/unreal-mcp/logo.png" width="600" alt="Unreal MCP Logo">
 </p>
