@@ -50,11 +50,11 @@ def test_entrypoints_import():
 
 # ─── tool registration ────────────────────────────────────────────────────────
 
-def test_exactly_ten_domain_tools():
+def test_domain_tools_match_catalog():
+    """Exactly one MCP tool per catalog domain — no more, no less."""
     tools = disp.dispatcher_mcp._tool_manager.list_tools()
     names = sorted(t.name for t in tools)
     assert names == sorted(CATALOG.keys())
-    assert len(names) == 10
 
 
 # ─── standard routing ─────────────────────────────────────────────────────────

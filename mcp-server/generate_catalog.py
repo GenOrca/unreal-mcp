@@ -33,6 +33,7 @@ DOMAINS = [
     "editor",
     "game",
     "level",
+    "level_sequence",
     "material",
     "umg",
     "util",

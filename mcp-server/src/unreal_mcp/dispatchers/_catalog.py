@@ -258,6 +258,40 @@ CATALOG = {
             'doc': 'Modifies WorldSettings of the current level.',
         },
     },
+    'level_sequence': {
+        'add_possessable': {
+            'params': 'asset_path, actor_label',
+            'doc': 'Adds a possessable binding for an existing level actor (by World Outliner label). Returns the binding name.',
+        },
+        'add_spawnable_from_class': {
+            'params': 'asset_path, class_path',
+            'doc': "Adds a spawnable binding from a class path (e.g. '/Script/CinematicCamera.CineCameraActor'). Returns the binding name.",
+        },
+        'add_transform_keyframe': {
+            'params': 'asset_path, binding_name, time_seconds, location, rotation, scale',
+            'doc': "Adds a keyframe at time_seconds on a binding's transform track. Provide any of",
+        },
+        'add_transform_track': {
+            'params': 'asset_path, binding_name',
+            'doc': 'Adds a 3D transform track (with one section) to a binding.',
+        },
+        'create_level_sequence': {
+            'params': 'asset_path, fps=30.0, duration_seconds=5.0',
+            'doc': 'Creates a Level Sequence asset with the given frame rate and playback duration.',
+        },
+        'get_sequence_info': {
+            'params': 'asset_path',
+            'doc': 'Returns frame rate, playback range (seconds), and the bindings of a Level Sequence.',
+        },
+        'remove_binding': {
+            'params': 'asset_path, binding_name',
+            'doc': 'Removes a binding (spawnable or possessable) from a Level Sequence by name.',
+        },
+        'set_playback_range': {
+            'params': 'asset_path, start_seconds, end_seconds',
+            'doc': 'Sets the playback range (in seconds) of a Level Sequence.',
+        },
+    },
     'material': {
         'connect_expressions': {
             'params': 'material_path, from_expression_identifier, from_output_name, to_expression_identifier, to_input_name, from_expression_class_name, to_expression_class_name',
