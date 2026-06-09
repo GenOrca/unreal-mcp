@@ -83,3 +83,145 @@ def ue_get_static_mesh_details(asset_path: str = None) -> str:
         tb_str = traceback.format_exc()
         unreal.log_error(f"Error in ue_get_static_mesh_details for {asset_path}: {str(e)}\n{tb_str}")
         return json.dumps({"success": False, "message": str(e), "traceback": tb_str})
+
+
+# --- Asset management (EditorAssetLibrary) ------------------------------------
+
+def ue_duplicate_asset(source_path: str = None, dest_path: str = None) -> str:
+    """Duplicates an asset to a new content-browser path."""
+    if source_path is None or dest_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: source_path, dest_path."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(source_path):
+            return json.dumps({"success": False, "message": f"Source asset not found: {source_path}"})
+        if unreal.EditorAssetLibrary.does_asset_exist(dest_path):
+            return json.dumps({"success": False, "message": f"Destination already exists: {dest_path}"})
+        new_asset = unreal.EditorAssetLibrary.duplicate_asset(source_path, dest_path)
+        if not new_asset:
+            return json.dumps({"success": False, "message": f"Failed to duplicate to {dest_path}."})
+        return json.dumps({"success": True, "source_path": source_path, "dest_path": dest_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_rename_asset(source_path: str = None, dest_path: str = None) -> str:
+    """Renames/moves an asset to a new content-browser path."""
+    if source_path is None or dest_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: source_path, dest_path."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(source_path):
+            return json.dumps({"success": False, "message": f"Source asset not found: {source_path}"})
+        ok = unreal.EditorAssetLibrary.rename_asset(source_path, dest_path)
+        return json.dumps({"success": bool(ok), "source_path": source_path, "dest_path": dest_path,
+                           "message": "Renamed." if ok else "rename_asset returned False."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_delete_asset(asset_path: str = None) -> str:
+    """Deletes an asset from the content browser."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        ok = unreal.EditorAssetLibrary.delete_asset(asset_path)
+        return json.dumps({"success": bool(ok), "asset_path": asset_path,
+                           "message": "Deleted." if ok else "delete_asset returned False."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_save_asset(asset_path: str = None) -> str:
+    """Saves an asset to disk."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        ok = unreal.EditorAssetLibrary.save_asset(asset_path)
+        return json.dumps({"success": bool(ok), "asset_path": asset_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_asset_exists(asset_path: str = None) -> str:
+    """Returns whether an asset exists at the given path."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "exists": bool(unreal.EditorAssetLibrary.does_asset_exist(asset_path))})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_asset_info(asset_path: str = None) -> str:
+    """Returns class and package info for an asset."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        data = unreal.EditorAssetLibrary.find_asset_data(asset_path)
+        if not data or not data.is_valid():
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        return json.dumps({
+            "success": True,
+            "asset_path": asset_path,
+            "asset_name": str(data.asset_name),
+            "asset_class": str(data.asset_class_path.asset_name) if hasattr(data, "asset_class_path") else "",
+            "package_name": str(data.package_name),
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_assets(directory_path: str = None, recursive: bool = True) -> str:
+    """Lists asset paths under a content directory."""
+    if directory_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'directory_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_directory_exist(directory_path):
+            return json.dumps({"success": False, "message": f"Directory not found: {directory_path}"})
+        assets = [str(a) for a in unreal.EditorAssetLibrary.list_assets(directory_path, recursive=bool(recursive))]
+        return json.dumps({"success": True, "directory_path": directory_path,
+                           "count": len(assets), "assets": assets})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_find_referencers(asset_path: str = None) -> str:
+    """Lists packages that reference the given asset."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        refs = [str(r) for r in unreal.EditorAssetLibrary.find_package_referencers_for_asset(asset_path, False)]
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "count": len(refs), "referencers": refs})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_make_directory(directory_path: str = None) -> str:
+    """Creates a content-browser directory."""
+    if directory_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'directory_path' is missing."})
+    try:
+        ok = unreal.EditorAssetLibrary.make_directory(directory_path)
+        return json.dumps({"success": bool(ok), "directory_path": directory_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_delete_directory(directory_path: str = None) -> str:
+    """Deletes a content-browser directory and its assets."""
+    if directory_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'directory_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_directory_exist(directory_path):
+            return json.dumps({"success": False, "message": f"Directory not found: {directory_path}"})
+        ok = unreal.EditorAssetLibrary.delete_directory(directory_path)
+        return json.dumps({"success": bool(ok), "directory_path": directory_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

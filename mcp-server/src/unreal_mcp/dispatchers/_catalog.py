@@ -145,13 +145,53 @@ CATALOG = {
         },
     },
     'asset': {
+        'asset_exists': {
+            'params': 'asset_path',
+            'doc': 'Returns whether an asset exists at the given path.',
+        },
+        'delete_asset': {
+            'params': 'asset_path',
+            'doc': 'Deletes an asset from the content browser.',
+        },
+        'delete_directory': {
+            'params': 'directory_path',
+            'doc': 'Deletes a content-browser directory and its assets.',
+        },
+        'duplicate_asset': {
+            'params': 'source_path, dest_path',
+            'doc': 'Duplicates an asset to a new content-browser path.',
+        },
         'find_by_query': {
             'params': 'name, asset_type',
             'doc': "Returns a JSON list of asset paths under '/Game' matching the given query dict.",
         },
+        'find_referencers': {
+            'params': 'asset_path',
+            'doc': 'Lists packages that reference the given asset.',
+        },
+        'get_asset_info': {
+            'params': 'asset_path',
+            'doc': 'Returns class and package info for an asset.',
+        },
         'get_static_mesh_details': {
             'params': 'asset_path',
             'doc': 'Retrieves the bounding box and dimensions of a static mesh asset.',
+        },
+        'list_assets': {
+            'params': 'directory_path, recursive=True',
+            'doc': 'Lists asset paths under a content directory.',
+        },
+        'make_directory': {
+            'params': 'directory_path',
+            'doc': 'Creates a content-browser directory.',
+        },
+        'rename_asset': {
+            'params': 'source_path, dest_path',
+            'doc': 'Renames/moves an asset to a new content-browser path.',
+        },
+        'save_asset': {
+            'params': 'asset_path',
+            'doc': 'Saves an asset to disk.',
         },
     },
     'behavior_tree': {
