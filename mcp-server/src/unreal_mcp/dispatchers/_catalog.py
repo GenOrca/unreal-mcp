@@ -49,6 +49,10 @@ CATALOG = {
             'params': 'actor_label',
             'doc': 'Lists the labels of actors attached to the given actor.',
         },
+        'get_component_property': {
+            'params': 'actor_label, component_name, property_name',
+            'doc': 'Reads a property on a named component of a live level actor.',
+        },
         'get_in_view_frustum': {
             'params': '',
             'doc': "Retrieves a list of actors that are potentially visible within the active editor viewport's frustum.",
@@ -60,6 +64,10 @@ CATALOG = {
         'get_selected_actors': {
             'params': '',
             'doc': 'Lists the currently selected level actors (label + class).',
+        },
+        'get_transform': {
+            'params': 'actor_label',
+            'doc': "Returns an actor's world location, rotation, and scale.",
         },
         'invert_selection': {
             'params': '',
@@ -100,6 +108,10 @@ CATALOG = {
         'set_actor_hidden': {
             'params': 'actor_label, hidden',
             'doc': 'Shows/hides an actor in the editor viewport (temporary editor visibility).',
+        },
+        'set_component_property': {
+            'params': 'actor_label, component_name, property_name, value',
+            'doc': "Sets a property on a named component of a live level actor (e.g. PointLightComponent 'intensity').",
         },
         'set_location': {
             'params': 'actor_label, location',

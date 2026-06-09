@@ -977,3 +977,69 @@ def ue_select_actors(actor_labels: list = None) -> str:
         return json.dumps({"success": True, "selected": [a.get_actor_label() for a in found], "missing": missing})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_transform(actor_label: str = None) -> str:
+    """Returns an actor's world location, rotation, and scale."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        loc = actor.get_actor_location()
+        rot = actor.get_actor_rotation()
+        scale = actor.get_actor_scale3d()
+        return json.dumps({
+            "success": True, "actor_label": actor_label,
+            "location": [round(loc.x, 3), round(loc.y, 3), round(loc.z, 3)],
+            "rotation": [round(rot.pitch, 3), round(rot.yaw, 3), round(rot.roll, 3)],
+            "scale": [round(scale.x, 3), round(scale.y, 3), round(scale.z, 3)],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def _find_component_on_actor(actor, component_name):
+    for c in actor.get_components_by_class(unreal.ActorComponent):
+        if c.get_name() == component_name:
+            return c
+    return None
+
+
+def ue_get_component_property(actor_label: str = None, component_name: str = None, property_name: str = None) -> str:
+    """Reads a property on a named component of a live level actor."""
+    if actor_label is None or component_name is None or property_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, component_name, property_name."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        comp = _find_component_on_actor(actor, component_name)
+        if not comp:
+            return json.dumps({"success": False, "message": f"Component '{component_name}' not found on '{actor_label}'."})
+        value = _serialize_ue_value(comp.get_editor_property(property_name))
+        return json.dumps({"success": True, "actor_label": actor_label, "component": component_name,
+                           "property": property_name, "value": value})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_component_property(actor_label: str = None, component_name: str = None,
+                             property_name: str = None, value=None) -> str:
+    """Sets a property on a named component of a live level actor (e.g. PointLightComponent 'intensity')."""
+    if actor_label is None or component_name is None or property_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, component_name, property_name."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        comp = _find_component_on_actor(actor, component_name)
+        if not comp:
+            return json.dumps({"success": False, "message": f"Component '{component_name}' not found on '{actor_label}'."})
+        current = comp.get_editor_property(property_name)
+        comp.set_editor_property(property_name, _convert_value_for_property(current, value))
+        return json.dumps({"success": True, "actor_label": actor_label, "component": component_name,
+                           "property": property_name, "value": _serialize_ue_value(comp.get_editor_property(property_name))})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

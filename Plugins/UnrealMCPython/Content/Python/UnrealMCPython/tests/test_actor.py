@@ -296,3 +296,33 @@ class TestActorActions(MCPTestCase):
         r = self.call("actor_actions", "ue_select_actors", actor_labels=["NoSuchActor_XYZ"])
         self.assertSuccess(r)
         self.assertIn("NoSuchActor_XYZ", r["missing"])
+
+    def test_get_transform(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_get_transform", actor_label=self._actor_label)
+        self.assertSuccess(r)
+        self.assertEqual(len(r["location"]), 3)
+        self.assertEqual(len(r["rotation"]), 3)
+        self.assertEqual(len(r["scale"]), 3)
+
+    def test_get_set_component_property(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        comps = self.call("actor_actions", "ue_list_actor_components",
+                          actor_label=self._actor_label)["components"]
+        light = next((c["name"] for c in comps if "Light" in c["class"]), comps[0]["name"])
+        r = self.call("actor_actions", "ue_set_component_property",
+                      actor_label=self._actor_label, component_name=light,
+                      property_name="intensity", value=12345.0)
+        self.assertSuccess(r)
+        r = self.call("actor_actions", "ue_get_component_property",
+                      actor_label=self._actor_label, component_name=light,
+                      property_name="intensity")
+        self.assertSuccess(r)
+        self.assertAlmostEqual(r["value"], 12345.0, places=1)
+
+    def test_get_component_property_unknown(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_get_component_property",
+                      actor_label=self._actor_label, component_name="NoSuchComp",
+                      property_name="intensity")
+        self.assertFalse(r.get("success"))
