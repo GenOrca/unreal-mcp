@@ -83,6 +83,10 @@ CATALOG = {
             'params': 'asset_path, track_name',
             'doc': 'Adds a notify track to an AnimSequence.',
         },
+        'add_socket': {
+            'params': 'asset_path, socket_name, bone_name, location, rotation',
+            'doc': 'Adds a socket on a bone of a SkeletalMesh. location=[x,y,z], rotation=[pitch,yaw,roll].',
+        },
         'add_sync_marker': {
             'params': 'asset_path, track_name, marker_name, time_seconds',
             'doc': 'Adds a sync marker at a time (seconds) on a notify track. Creates the track if needed.',
@@ -102,6 +106,10 @@ CATALOG = {
         'get_skeleton_info': {
             'params': 'asset_path',
             'doc': 'Returns curve metadata names for a Skeleton asset.',
+        },
+        'list_bones': {
+            'params': 'asset_path',
+            'doc': 'Lists reference-skeleton bones (name, index, parent) of a SkeletalMesh.',
         },
         'list_curves': {
             'params': 'asset_path',
@@ -130,6 +138,10 @@ CATALOG = {
         'remove_notify_track': {
             'params': 'asset_path, track_name',
             'doc': 'Removes a notify track (and its notifies) from an AnimSequence.',
+        },
+        'remove_socket': {
+            'params': 'asset_path, socket_name',
+            'doc': 'Removes a named socket from a SkeletalMesh.',
         },
     },
     'asset': {

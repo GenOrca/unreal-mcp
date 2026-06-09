@@ -261,4 +261,24 @@ public:
         const FString& NodeName,
         const FString& PinName,
         const FString& Value);
+
+    // ─── SkeletalMesh / Skeleton Helpers ──────────────────────────────────────
+    // Python does not expose reference-skeleton bone enumeration, and
+    // USkeletalMeshSocket::SocketName is read-only via Python reflection.
+    // These proxy the calls through C++.
+
+    /** List reference-skeleton bones of a SkeletalMesh as JSON [{name, index, parent}]. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString GetSkeletonBones(USkeletalMesh* Mesh);
+
+    /** Add a socket to a SkeletalMesh on a bone with a relative transform. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString AddSkeletalMeshSocket(USkeletalMesh* Mesh, const FString& SocketName,
+        const FString& BoneName,
+        float LocationX, float LocationY, float LocationZ,
+        float RotationPitch, float RotationYaw, float RotationRoll);
+
+    /** Remove a named socket from a SkeletalMesh. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString RemoveSkeletalMeshSocket(USkeletalMesh* Mesh, const FString& SocketName);
 };

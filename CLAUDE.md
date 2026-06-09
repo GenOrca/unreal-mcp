@@ -107,13 +107,32 @@ def test_my_action(self):
 1. Create `Plugins/.../UnrealMCPython/<domain>_actions.py` with `ue_*` functions.
 2. Create `Plugins/.../UnrealMCPython/tests/test_<domain>.py` and add the module to
    `tests/run_all.py`.
-3. Add `"<domain>"` to `DOMAINS` in `generate_catalog.py` and `_STANDARD_DOMAINS` in
-   `dispatcher.py` (the module is derived as `UnrealMCPython.<domain>_actions`).
+3. Add `"<domain>"` to `DOMAINS` in `generate_catalog.py` (the module is derived as
+   `UnrealMCPython.<domain>_actions`). The dispatcher auto-registers every catalog
+   domain except `util` — no `dispatcher.py` edit needed.
 4. `uv run python generate_catalog.py`, then run the gates.
 
 Special routing (separate TCP message types, e.g. `execute_python`) lives in the hand-written
 `util` handler in `dispatcher.py` — follow that pattern only if an action is not a plain
 `ue_*` call.
+
+## Adding C++ helpers (UFUNCTIONs in MCPythonHelper)
+
+Some APIs aren't exposed to Python (e.g. reference-skeleton bones, read-only
+`SkeletalMeshSocket.socket_name`, Blueprint/AnimBP graph internals). Add a
+`UFUNCTION(BlueprintCallable, Category="Editor|MCPython")` to
+`Source/UnrealMCPython/Public/MCPythonHelper.h` + impl in the `.cpp` (return a JSON
+string via `SerializeJsonObj`), then call it from a Python `ue_*` wrapper.
+
+**Build cycle — this matters:**
+- Editing an existing function *body* → `util livecoding_compile` hot-patches the
+  running editor. Fast.
+- **Adding a new UFUNCTION** (new reflection) → Live Coding compiles but does NOT
+  register it. You must do a full UBT build with the editor **closed**:
+  1. Close the editor completely (verify no `UnrealEditor.exe` remains).
+  2. `"<UE>/Engine/Build/BatchFiles/Build.bat" UnrealEditor Win64 Development -project="<repo>/UnrealMCPSample.uproject" -waitmutex`
+     (this is a plugin-only project — there is no project-level target).
+  3. Reopen the editor; the new UFUNCTION is now callable from Python.
 
 ## Conventions
 

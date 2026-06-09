@@ -294,3 +294,59 @@ def ue_get_skeleton_info(asset_path: str = None) -> str:
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- SkeletalMesh bones / socket editing (via MCPythonHelper C++) --------------
+# Bone enumeration and socket creation are not available through stock Python
+# (socket_name is read-only on a bare SkeletalMeshSocket), so these proxy the
+# C++ helper, which returns a JSON string directly.
+
+def ue_list_bones(asset_path: str = None) -> str:
+    """Lists reference-skeleton bones (name, index, parent) of a SkeletalMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        return unreal.MCPythonHelper.get_skeleton_bones(sm)
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_add_socket(asset_path: str = None, socket_name: str = None, bone_name: str = None,
+                  location: list = None, rotation: list = None) -> str:
+    """Adds a socket on a bone of a SkeletalMesh. location=[x,y,z], rotation=[pitch,yaw,roll]."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    if socket_name is None or bone_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: socket_name, bone_name."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        loc = location or [0.0, 0.0, 0.0]
+        rot = rotation or [0.0, 0.0, 0.0]
+        if len(loc) != 3 or len(rot) != 3:
+            return json.dumps({"success": False, "message": "location and rotation must be lists of 3 floats."})
+        result = unreal.MCPythonHelper.add_skeletal_mesh_socket(
+            sm, socket_name, bone_name,
+            float(loc[0]), float(loc[1]), float(loc[2]),
+            float(rot[0]), float(rot[1]), float(rot[2]))
+        if json.loads(result).get("success"):
+            unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return result
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_remove_socket(asset_path: str = None, socket_name: str = None) -> str:
+    """Removes a named socket from a SkeletalMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    if socket_name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'socket_name' is missing."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        result = unreal.MCPythonHelper.remove_skeletal_mesh_socket(sm, socket_name)
+        if json.loads(result).get("success"):
+            unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return result
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

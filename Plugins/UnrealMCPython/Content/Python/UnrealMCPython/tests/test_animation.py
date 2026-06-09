@@ -155,3 +155,48 @@ class TestAnimationActions(MCPTestCase):
         r = self.call("animation_actions", "ue_get_skeleton_info", asset_path=skel_path)
         self.assertSuccess(r)
         self.assertIn("curve_names", r)
+
+    # ── bones + socket editing (C++ helper; needs the plugin built with these UFUNCTIONs) ──
+
+    def test_list_bones(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        r = self.call("animation_actions", "ue_list_bones", asset_path=_TPP_MESH)
+        self.assertSuccess(r)
+        self.assertGreater(r["bone_count"], 0)
+        self.assertIn("name", r["bones"][0])
+
+    def test_add_and_remove_socket(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        dup = f"{TEST_ROOT}/MCP_TestSkelMesh"
+        self.delete_asset(dup)
+        mesh = unreal.EditorAssetLibrary.duplicate_asset(_TPP_MESH, dup)
+        self.assertIsNotNone(mesh, "could not duplicate skeletal mesh")
+        try:
+            bone = self.call("animation_actions", "ue_list_bones", asset_path=dup)["bones"][0]["name"]
+            r = self.call("animation_actions", "ue_add_socket", asset_path=dup,
+                          socket_name="MCP_Socket", bone_name=bone, location=[0, 0, 10])
+            self.assertSuccess(r)
+            socks = self.call("animation_actions", "ue_list_sockets", asset_path=dup)
+            self.assertIn("MCP_Socket", [s["name"] for s in socks["sockets"]])
+            r = self.call("animation_actions", "ue_remove_socket", asset_path=dup, socket_name="MCP_Socket")
+            self.assertSuccess(r)
+            socks = self.call("animation_actions", "ue_list_sockets", asset_path=dup)
+            self.assertNotIn("MCP_Socket", [s["name"] for s in socks["sockets"]])
+        finally:
+            self.delete_asset(dup)
+
+    def test_add_socket_invalid_bone(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        dup = f"{TEST_ROOT}/MCP_TestSkelMesh2"
+        self.delete_asset(dup)
+        mesh = unreal.EditorAssetLibrary.duplicate_asset(_TPP_MESH, dup)
+        self.assertIsNotNone(mesh)
+        try:
+            r = self.call("animation_actions", "ue_add_socket", asset_path=dup,
+                          socket_name="MCP_Bad", bone_name="NoSuchBone_XYZ", location=[0, 0, 0])
+            self.assertFalse(r.get("success"))
+        finally:
+            self.delete_asset(dup)
