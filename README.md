@@ -32,7 +32,7 @@ Unreal MCP connects AI assistants to the Unreal Editor through the [Model Contex
 
 **191 actions across 16 domains**, plus `execute_python` as an escape hatch — run any BlueprintCallable function or editor subsystem the engine exposes to Python, on the fly.
 
-**Easy to extend.** Most tools are plain Python: add a function to a domain module, run the catalog generator, and it becomes a new action — no C++ and no editor rebuild. For the rare capability Python doesn't expose (e.g. reference-skeleton bones), a small optional C++ helper layer is there too. See [CLAUDE.md](CLAUDE.md) for the step-by-step workflow.
+**Easy to extend.** Adding an action is a Python function plus a catalog regen — no C++ and no editor rebuild on the Python path. When you need something Python doesn't expose (e.g. reference-skeleton bones), an optional C++ helper layer is there too. See [CLAUDE.md](CLAUDE.md) for the step-by-step workflow.
 
 <p align="center">
   <a href="https://youtu.be/V7KyjzFlBLk?si=QaqVqmt6YL59DHg4">
@@ -94,8 +94,8 @@ Adding a tool is intentionally low-friction — anyone comfortable with Python c
 2. Run `python generate_catalog.py` — the action is now exposed by its domain tool.
 3. (Optional) add an in-editor test in `tests/test_<domain>.py`.
 
-No C++ and no editor rebuild for Python actions. New domain? Drop in a
-`<domain>_actions.py` and list it in the generator. For the rare API Python doesn't
+The Python path needs no C++ and no editor rebuild. New domain? Drop in a
+`<domain>_actions.py` and list it in the generator. For an API that Python doesn't
 expose, an optional C++ helper (`MCPythonHelper`) is available. Full details in
 [CLAUDE.md](CLAUDE.md).
 
