@@ -121,3 +121,31 @@ class TestAssetActions(MCPTestCase):
     def test_save_asset_missing(self):
         r = self.call("asset_actions", "ue_save_asset", asset_path="/Game/Nope_XYZ123")
         self.assertFalse(r.get("success"))
+
+    def test_get_dependencies(self):
+        r = self.call("asset_actions", "ue_get_dependencies", asset_path=self._SRC)
+        self.assertSuccess(r)
+        self.assertIn("dependencies", r)
+
+    def test_get_dependencies_missing(self):
+        r = self.call("asset_actions", "ue_get_dependencies", asset_path="/Game/Nope_XYZ")
+        self.assertFalse(r.get("success"))
+
+    def test_metadata_tag_roundtrip(self):
+        import unreal
+        self.call("asset_actions", "ue_make_directory", directory_path=self._DIR)
+        dst = self._dup("MetaCube")
+        unreal.EditorAssetLibrary.duplicate_asset(self._SRC, dst)
+        try:
+            r = self.call("asset_actions", "ue_set_metadata_tag",
+                          asset_path=dst, tag="MCP_Tag", value="hello")
+            self.assertSuccess(r)
+            r = self.call("asset_actions", "ue_get_metadata_tag", asset_path=dst, tag="MCP_Tag")
+            self.assertEqual(r["value"], "hello")
+            r = self.call("asset_actions", "ue_remove_metadata_tag", asset_path=dst, tag="MCP_Tag")
+            self.assertSuccess(r)
+            r = self.call("asset_actions", "ue_get_metadata_tag", asset_path=dst, tag="MCP_Tag")
+            self.assertEqual(r["value"], "")
+        finally:
+            if unreal.EditorAssetLibrary.does_asset_exist(dst):
+                unreal.EditorAssetLibrary.delete_asset(dst)

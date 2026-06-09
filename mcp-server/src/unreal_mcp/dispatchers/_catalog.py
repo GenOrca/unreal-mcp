@@ -221,6 +221,14 @@ CATALOG = {
             'params': 'asset_path',
             'doc': 'Returns class and package info for an asset.',
         },
+        'get_dependencies': {
+            'params': 'asset_path',
+            'doc': 'Lists packages that the given asset depends on (references).',
+        },
+        'get_metadata_tag': {
+            'params': 'asset_path, tag',
+            'doc': 'Reads a metadata tag value on an asset (empty string if unset).',
+        },
         'get_static_mesh_details': {
             'params': 'asset_path',
             'doc': 'Retrieves the bounding box and dimensions of a static mesh asset.',
@@ -233,6 +241,10 @@ CATALOG = {
             'params': 'directory_path',
             'doc': 'Creates a content-browser directory.',
         },
+        'remove_metadata_tag': {
+            'params': 'asset_path, tag',
+            'doc': 'Removes a metadata tag from an asset.',
+        },
         'rename_asset': {
             'params': 'source_path, dest_path',
             'doc': 'Renames/moves an asset to a new content-browser path.',
@@ -240,6 +252,10 @@ CATALOG = {
         'save_asset': {
             'params': 'asset_path',
             'doc': 'Saves an asset to disk.',
+        },
+        'set_metadata_tag': {
+            'params': 'asset_path, tag, value',
+            'doc': 'Sets a metadata tag value on an asset.',
         },
     },
     'behavior_tree': {

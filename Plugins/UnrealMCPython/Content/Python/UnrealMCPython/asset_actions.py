@@ -225,3 +225,71 @@ def ue_delete_directory(directory_path: str = None) -> str:
         return json.dumps({"success": bool(ok), "directory_path": directory_path})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Dependencies + metadata tags ---------------------------------------------
+
+def _package_of(asset_path: str) -> str:
+    return asset_path.split(".")[0]
+
+
+def ue_get_dependencies(asset_path: str = None) -> str:
+    """Lists packages that the given asset depends on (references)."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        if not unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        opt = unreal.AssetRegistryDependencyOptions(
+            include_soft_package_references=True, include_hard_package_references=True)
+        deps = ar.get_dependencies(unreal.Name(_package_of(asset_path)), opt) or []
+        deps = [str(d) for d in deps]
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "count": len(deps), "dependencies": deps})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_metadata_tag(asset_path: str = None, tag: str = None) -> str:
+    """Reads a metadata tag value on an asset (empty string if unset)."""
+    if asset_path is None or tag is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, tag."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        return json.dumps({"success": True, "asset_path": asset_path, "tag": tag,
+                           "value": unreal.EditorAssetLibrary.get_metadata_tag(asset, unreal.Name(tag))})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_metadata_tag(asset_path: str = None, tag: str = None, value: str = None) -> str:
+    """Sets a metadata tag value on an asset."""
+    if asset_path is None or tag is None or value is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, tag, value."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        unreal.EditorAssetLibrary.set_metadata_tag(asset, unreal.Name(tag), value)
+        unreal.EditorAssetLibrary.save_loaded_asset(asset)
+        return json.dumps({"success": True, "asset_path": asset_path, "tag": tag, "value": value})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_remove_metadata_tag(asset_path: str = None, tag: str = None) -> str:
+    """Removes a metadata tag from an asset."""
+    if asset_path is None or tag is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, tag."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        unreal.EditorAssetLibrary.remove_metadata_tag(asset, unreal.Name(tag))
+        unreal.EditorAssetLibrary.save_loaded_asset(asset)
+        return json.dumps({"success": True, "asset_path": asset_path, "removed_tag": tag})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
