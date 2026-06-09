@@ -614,6 +614,20 @@ CATALOG = {
             'doc': 'Assigns a material to a StaticMesh material slot.',
         },
     },
+    'texture': {
+        'get_texture_info': {
+            'params': 'asset_path',
+            'doc': 'Returns size, memory, sRGB, and compression settings of a Texture2D.',
+        },
+        'set_texture_compression': {
+            'params': 'asset_path, compression',
+            'doc': "Sets the compression settings of a Texture2D (e.g. 'TC_DEFAULT', 'TC_NORMALMAP', 'TC_MASKS', 'TC_GRAYSCALE').",
+        },
+        'set_texture_srgb': {
+            'params': 'asset_path, srgb',
+            'doc': 'Sets the sRGB flag on a Texture2D.',
+        },
+    },
     'umg': {
         'add_widget': {
             'params': 'asset_path, widget_type, widget_name, parent_name',

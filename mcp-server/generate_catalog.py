@@ -39,6 +39,7 @@ DOMAINS = [
     "level_sequence",
     "material",
     "static_mesh",
+    "texture",
     "umg",
     "util",
 ]
