@@ -81,6 +81,14 @@ CATALOG = {
             'params': 'actor_label, tag',
             'doc': 'Removes a tag from an actor (Actor.Tags).',
         },
+        'rename_actor': {
+            'params': 'actor_label, new_label',
+            'doc': 'Renames an actor (changes its World Outliner label).',
+        },
+        'select_actors': {
+            'params': 'actor_labels',
+            'doc': 'Selects the given actors by label in the editor (replaces current selection).',
+        },
         'select_all': {
             'params': '',
             'doc': 'Selects all actors in the current level.',
@@ -88,6 +96,10 @@ CATALOG = {
         'set_actor_folder': {
             'params': 'actor_label, folder_path',
             'doc': 'Sets the World Outliner folder path of an actor.',
+        },
+        'set_actor_hidden': {
+            'params': 'actor_label, hidden',
+            'doc': 'Shows/hides an actor in the editor viewport (temporary editor visibility).',
         },
         'set_location': {
             'params': 'actor_label, location',
@@ -332,6 +344,10 @@ CATALOG = {
         'connect_blueprint_pins': {
             'params': "asset_path, graph_name='EventGraph', source_node, source_pin, target_node, target_pin",
             'doc': 'Connects two pins in a Blueprint graph.',
+        },
+        'create_blueprint': {
+            'params': "asset_path, parent_class_path='/Script/Engine.Actor'",
+            'doc': 'Creates a Blueprint asset with the given parent class (default Actor).',
         },
         'get_blueprint_graph_info': {
             'params': "asset_path, graph_name='EventGraph'",

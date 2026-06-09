@@ -433,3 +433,27 @@ def ue_auto_layout_graph(asset_path: str = None, graph_name: str = "EventGraph",
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_create_blueprint(asset_path: str = None, parent_class_path: str = "/Script/Engine.Actor") -> str:
+    """Creates a Blueprint asset with the given parent class (default Actor)."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        if unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            return json.dumps({"success": False, "message": f"Asset already exists: {asset_path}"})
+        parent = unreal.load_class(None, parent_class_path)
+        if not parent:
+            return json.dumps({"success": False, "message": f"Parent class not found: {parent_class_path}"})
+        asset_path = asset_path.rstrip("/")
+        idx = asset_path.rfind("/")
+        name, package = asset_path[idx + 1:], asset_path[:idx]
+        factory = unreal.BlueprintFactory()
+        factory.set_editor_property("parent_class", parent)
+        bp = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, package, unreal.Blueprint, factory)
+        if not bp:
+            return json.dumps({"success": False, "message": f"Failed to create Blueprint at {asset_path}."})
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return json.dumps({"success": True, "asset_path": asset_path, "parent_class": parent_class_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

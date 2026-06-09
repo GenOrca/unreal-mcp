@@ -176,3 +176,22 @@ class TestBlueprintActions(MCPTestCase):
                       asset_path=self._bp_path, component_name="PropLightComp",
                       property_name="Intensity", value="5000.0")
         self.assertSuccess(r)
+
+    def test_create_blueprint(self):
+        import unreal
+        from UnrealMCPython.tests.base import TEST_ROOT
+        path = f"{TEST_ROOT}/MCP_CreatedBP"
+        self.delete_asset(path)
+        try:
+            r = self.call("blueprint_actions", "ue_create_blueprint",
+                          asset_path=path, parent_class_path="/Script/Engine.Actor")
+            self.assertSuccess(r)
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(path))
+        finally:
+            self.delete_asset(path)
+
+    def test_create_blueprint_bad_parent(self):
+        from UnrealMCPython.tests.base import TEST_ROOT
+        r = self.call("blueprint_actions", "ue_create_blueprint",
+                      asset_path=f"{TEST_ROOT}/MCP_BadBP", parent_class_path="/Script/Engine.NopeXYZ")
+        self.assertFalse(r.get("success"))

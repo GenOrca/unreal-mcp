@@ -933,3 +933,47 @@ def ue_get_selected_actors() -> str:
                            "actors": [{"label": a.get_actor_label(), "class": a.get_class().get_name()} for a in sel]})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_rename_actor(actor_label: str = None, new_label: str = None) -> str:
+    """Renames an actor (changes its World Outliner label)."""
+    if actor_label is None or new_label is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, new_label."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        actor.set_actor_label(new_label)
+        return json.dumps({"success": True, "old_label": actor_label, "new_label": actor.get_actor_label()})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_actor_hidden(actor_label: str = None, hidden: bool = None) -> str:
+    """Shows/hides an actor in the editor viewport (temporary editor visibility)."""
+    if actor_label is None or hidden is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, hidden."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        actor.set_is_temporarily_hidden_in_editor(bool(hidden))
+        return json.dumps({"success": True, "actor_label": actor_label, "hidden": bool(hidden)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_select_actors(actor_labels: list = None) -> str:
+    """Selects the given actors by label in the editor (replaces current selection)."""
+    if actor_labels is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_labels' is missing."})
+    try:
+        sub = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        found, missing = [], []
+        for label in actor_labels:
+            a = _get_actor_by_label(label)
+            (found.append(a) if a else missing.append(label))
+        sub.set_selected_level_actors(found)
+        return json.dumps({"success": True, "selected": [a.get_actor_label() for a in found], "missing": missing})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
