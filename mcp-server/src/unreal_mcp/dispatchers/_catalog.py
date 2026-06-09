@@ -703,6 +703,10 @@ CATALOG = {
             'params': 'code',
             'doc': 'Runs arbitrary Unreal Python code. Full API access; fastest path to prototype new actions.',
         },
+        'get_cvar': {
+            'params': 'name',
+            'doc': "Reads the current value of a console variable (CVar) as a string, e.g. 'r.ScreenPercentage'.",
+        },
         'get_output_log': {
             'params': 'line_count=50, keyword',
             'doc': 'Returns recent lines from the Unreal Engine output log file.',

@@ -71,3 +71,12 @@ class TestUtilActions(MCPTestCase):
         r = self.call("util_actions", "ue_list_class_properties",
                       class_path="/Script/Engine.NopeXYZ123")
         self.assertFalse(r.get("success"))
+
+    def test_get_cvar(self):
+        r = self.call("util_actions", "ue_get_cvar", name="r.ScreenPercentage")
+        self.assertSuccess(r)
+        self.assertIn("value", r)
+
+    def test_get_cvar_missing(self):
+        r = self.call("util_actions", "ue_get_cvar")
+        self.assertFalse(r.get("success"))

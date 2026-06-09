@@ -147,3 +147,14 @@ def ue_list_class_properties(class_path: str = None) -> str:
                            "count": len(props), "properties": props})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_cvar(name: str = None) -> str:
+    """Reads the current value of a console variable (CVar) as a string, e.g. 'r.ScreenPercentage'."""
+    if name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'name' is missing."})
+    try:
+        value = unreal.SystemLibrary.get_console_variable_string_value(name)
+        return json.dumps({"success": True, "name": name, "value": value})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
