@@ -310,6 +310,40 @@ CATALOG = {
             'doc': "Sets a property on a component template in a Blueprint's SCS.",
         },
     },
+    'data_table': {
+        'create_data_table': {
+            'params': 'asset_path, row_struct_path',
+            'doc': "Creates a DataTable asset with the given row struct (e.g. '/Script/MyModule.MyRow' or a UserDefinedStruct path).",
+        },
+        'does_row_exist': {
+            'params': 'asset_path, row_name',
+            'doc': 'Returns whether a row exists in a DataTable.',
+        },
+        'export_to_csv': {
+            'params': 'asset_path',
+            'doc': 'Returns all rows of a DataTable as a CSV string.',
+        },
+        'get_column_names': {
+            'params': 'asset_path',
+            'doc': "Lists the column (property) names of a DataTable's row struct.",
+        },
+        'get_row_names': {
+            'params': 'asset_path',
+            'doc': 'Lists the row names of a DataTable.',
+        },
+        'get_rows_as_json': {
+            'params': 'asset_path',
+            'doc': "Returns all rows of a DataTable as a JSON string (under the 'rows' field).",
+        },
+        'remove_row': {
+            'params': 'asset_path, row_name',
+            'doc': 'Removes a row from a DataTable by name.',
+        },
+        'set_rows_from_json': {
+            'params': 'asset_path, json_string',
+            'doc': "Replaces a DataTable's rows from a JSON string (array of row objects with a 'Name' key).",
+        },
+    },
     'editor': {
         'get_selected_assets': {
             'params': '',

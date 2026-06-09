@@ -24,6 +24,7 @@ _MODULES = [
     "UnrealMCPython.tests.test_material",
     "UnrealMCPython.tests.test_blueprint",
     "UnrealMCPython.tests.test_behavior_tree",
+    "UnrealMCPython.tests.test_data_table",
     "UnrealMCPython.tests.test_umg",
     "UnrealMCPython.tests.test_editor",
     "UnrealMCPython.tests.test_game",

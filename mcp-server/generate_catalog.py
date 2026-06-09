@@ -31,6 +31,7 @@ DOMAINS = [
     "asset",
     "behavior_tree",
     "blueprint",
+    "data_table",
     "editor",
     "game",
     "level",
