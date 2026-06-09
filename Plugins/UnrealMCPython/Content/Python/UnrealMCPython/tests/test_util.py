@@ -60,3 +60,14 @@ class TestUtilActions(MCPTestCase):
         r = self.call("util_actions", "ue_is_in_pie")
         self.assertSuccess(r)
         self.assertIsInstance(r["in_pie"], bool)
+
+    def test_list_class_properties(self):
+        r = self.call("util_actions", "ue_list_class_properties",
+                      class_path="/Script/Engine.PointLight")
+        self.assertSuccess(r)
+        self.assertGreater(r["count"], 0)
+
+    def test_list_class_properties_invalid(self):
+        r = self.call("util_actions", "ue_list_class_properties",
+                      class_path="/Script/Engine.NopeXYZ123")
+        self.assertFalse(r.get("success"))

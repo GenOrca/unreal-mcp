@@ -250,3 +250,21 @@ class TestActorActions(MCPTestCase):
         r = self.call("actor_actions", "ue_attach_actor",
                       child_label=self._actor_label, parent_label="NoSuchActor_XYZ")
         self.assertFalse(r.get("success"))
+
+    def test_get_actors_of_class(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_get_actors_of_class",
+                      class_path="/Script/Engine.PointLight")
+        self.assertSuccess(r)
+        self.assertIn(self._actor_label, r["actors"])
+
+    def test_get_actors_of_class_invalid(self):
+        r = self.call("actor_actions", "ue_get_actors_of_class",
+                      class_path="/Script/Engine.NopeXYZ123")
+        self.assertFalse(r.get("success"))
+
+    def test_get_selected_actors(self):
+        self.call("actor_actions", "ue_select_all")
+        r = self.call("actor_actions", "ue_get_selected_actors")
+        self.assertSuccess(r)
+        self.assertIsInstance(r["actors"], list)

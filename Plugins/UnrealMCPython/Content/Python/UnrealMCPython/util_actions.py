@@ -130,3 +130,20 @@ def ue_stop_pie() -> str:
         return json.dumps({"success": True, "message": "Requested PIE end."})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_class_properties(class_path: str = None) -> str:
+    """Lists the editor-settable property names of a UClass (for discovering what set_property accepts)."""
+    if class_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'class_path' is missing."})
+    try:
+        cls = unreal.load_class(None, class_path)
+        if not cls:
+            return json.dumps({"success": False, "message": f"Class not found: {class_path}"})
+        cdo = unreal.get_default_object(cls)
+        props = sorted(p for p in dir(cdo)
+                       if not p.startswith("_") and not callable(getattr(type(cdo), p, None)))
+        return json.dumps({"success": True, "class_path": class_path,
+                           "count": len(props), "properties": props})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

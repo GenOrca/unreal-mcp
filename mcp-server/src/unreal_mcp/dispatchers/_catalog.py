@@ -37,6 +37,10 @@ CATALOG = {
             'params': 'actor_label',
             'doc': 'Returns the gameplay tags (Actor.Tags) of an actor.',
         },
+        'get_actors_of_class': {
+            'params': 'class_path',
+            'doc': "Lists labels of level actors of the given class path (e.g. '/Script/Engine.PointLight').",
+        },
         'get_all_details': {
             'params': '',
             'doc': 'Lists all actors in the current level with detailed information including',
@@ -52,6 +56,10 @@ CATALOG = {
         'get_property': {
             'params': 'actor_label, property_name',
             'doc': 'Gets a property value from an actor using get_editor_property().',
+        },
+        'get_selected_actors': {
+            'params': '',
+            'doc': 'Lists the currently selected level actors (label + class).',
         },
         'invert_selection': {
             'params': '',
@@ -690,6 +698,10 @@ CATALOG = {
         'is_in_pie': {
             'params': '',
             'doc': 'Returns whether Play-In-Editor is currently active.',
+        },
+        'list_class_properties': {
+            'params': 'class_path',
+            'doc': 'Lists the editor-settable property names of a UClass (for discovering what set_property accepts).',
         },
         'livecoding_compile': {
             'params': '',

@@ -907,3 +907,29 @@ def ue_get_actor_bounds(actor_label: str = None) -> str:
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_actors_of_class(class_path: str = None) -> str:
+    """Lists labels of level actors of the given class path (e.g. '/Script/Engine.PointLight')."""
+    if class_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'class_path' is missing."})
+    try:
+        cls = unreal.load_class(None, class_path)
+        if not cls:
+            return json.dumps({"success": False, "message": f"Class not found: {class_path}"})
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        actors = unreal.GameplayStatics.get_all_actors_of_class(world, cls)
+        return json.dumps({"success": True, "class_path": class_path,
+                           "count": len(actors), "actors": [a.get_actor_label() for a in actors]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_selected_actors() -> str:
+    """Lists the currently selected level actors (label + class)."""
+    try:
+        sel = unreal.get_editor_subsystem(unreal.EditorActorSubsystem).get_selected_level_actors()
+        return json.dumps({"success": True, "count": len(sel),
+                           "actors": [{"label": a.get_actor_label(), "class": a.get_class().get_name()} for a in sel]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
