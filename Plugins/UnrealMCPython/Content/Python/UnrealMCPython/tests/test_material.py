@@ -165,3 +165,101 @@ class TestMaterialActions(MCPTestCase):
                       from_expression_identifier=a["expression_name"], from_output_name="",
                       to_expression_identifier=b["expression_name"], to_input_name="A")
         self.assertSuccess(r)
+
+    # ── asset creation ──────────────────────────────────────────────────────────
+
+    def test_create_material(self):
+        import unreal
+        path = f"{TEST_ROOT}/MCP_CreatedMat"
+        try:
+            r = self.call("material_actions", "ue_create_material", material_path=path)
+            self.assertSuccess(r)
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(path))
+        finally:
+            self.delete_asset(path)
+
+    def test_create_material_instance(self):
+        import unreal
+        path = f"{TEST_ROOT}/MCP_CreatedMI"
+        try:
+            r = self.call("material_actions", "ue_create_material_instance",
+                          instance_path=path, parent_path=self._mat_path)
+            self.assertSuccess(r)
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(path))
+        finally:
+            self.delete_asset(path)
+
+    # ── graph authoring ─────────────────────────────────────────────────────────
+
+    def test_connect_property(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        c = self.call("material_actions", "ue_create_expression",
+                      material_path=self._mat_path,
+                      expression_class_name="Constant3Vector", node_pos_x=-400, node_pos_y=0)
+        self.assertSuccess(c)
+        r = self.call("material_actions", "ue_connect_property",
+                      material_path=self._mat_path,
+                      from_expression_identifier=c["expression_name"],
+                      from_output_name="", property_name="BaseColor")
+        self.assertSuccess(r)
+
+    def test_connect_property_invalid_name(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        r = self.call("material_actions", "ue_connect_property",
+                      material_path=self._mat_path,
+                      from_expression_identifier="whatever", property_name="NotAProperty")
+        self.assertFalse(r.get("success"))
+
+    def test_set_expression_property(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        c = self.call("material_actions", "ue_create_expression",
+                      material_path=self._mat_path,
+                      expression_class_name="Constant", node_pos_x=-600, node_pos_y=0)
+        self.assertSuccess(c)
+        r = self.call("material_actions", "ue_set_expression_property",
+                      material_path=self._mat_path,
+                      expression_identifier=c["expression_name"],
+                      property_name="r", value=0.5)
+        self.assertSuccess(r)
+
+    def test_delete_expression(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        c = self.call("material_actions", "ue_create_expression",
+                      material_path=self._mat_path,
+                      expression_class_name="Constant", node_pos_x=-800, node_pos_y=0)
+        self.assertSuccess(c)
+        r = self.call("material_actions", "ue_delete_expression",
+                      material_path=self._mat_path,
+                      expression_identifier=c["expression_name"])
+        self.assertSuccess(r)
+
+    def test_layout_expressions(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        r = self.call("material_actions", "ue_layout_expressions",
+                      material_path=self._mat_path)
+        self.assertSuccess(r)
+
+    # ── introspection ───────────────────────────────────────────────────────────
+
+    def test_get_material_info(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        r = self.call("material_actions", "ue_get_material_info",
+                      material_path=self._mat_path)
+        self.assertSuccess(r)
+        self.assertIn("expression_count", r)
+        self.assertIsInstance(r["expressions"], list)
+
+    def test_list_parameters(self):
+        if not self._mat_path:
+            self.skipTest("Material not created in setUp")
+        r = self.call("material_actions", "ue_list_parameters",
+                      material_path=self._mat_path)
+        self.assertSuccess(r)
+        self.assertIn("TestScalar", r["scalar"])
+        self.assertIn("TestVector", r["vector"])

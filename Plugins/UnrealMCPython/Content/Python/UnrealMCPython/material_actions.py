@@ -82,6 +82,32 @@ def _find_material_expression_by_name_or_type(material: unreal.Material, express
 
     raise ValueError(f"MaterialExpression identified by '{expression_identifier}' (intended class: {expression_class_name or 'any'}) not found in material '{material.get_path_name()}'.")
     
+# Friendly material-property name → unreal.MaterialProperty enum
+_MATERIAL_PROPERTY_MAP = {
+    "BaseColor": "MP_BASE_COLOR",
+    "Metallic": "MP_METALLIC",
+    "Specular": "MP_SPECULAR",
+    "Roughness": "MP_ROUGHNESS",
+    "Anisotropy": "MP_ANISOTROPY",
+    "EmissiveColor": "MP_EMISSIVE_COLOR",
+    "Opacity": "MP_OPACITY",
+    "OpacityMask": "MP_OPACITY_MASK",
+    "Normal": "MP_NORMAL",
+    "Tangent": "MP_TANGENT",
+    "WorldPositionOffset": "MP_WORLD_POSITION_OFFSET",
+    "SubsurfaceColor": "MP_SUBSURFACE_COLOR",
+    "AmbientOcclusion": "MP_AMBIENT_OCCLUSION",
+    "Refraction": "MP_REFRACTION",
+}
+
+
+def _split_asset_path(asset_path: str):
+    """'/Game/Foo/MyAsset' → ('MyAsset', '/Game/Foo')."""
+    asset_path = asset_path.rstrip("/")
+    idx = asset_path.rfind("/")
+    return asset_path[idx + 1:], asset_path[:idx]
+
+
 # --- Material Editing Actions ---
 
 def ue_create_expression(material_path: str = None, expression_class_name: str = None, node_pos_x: int = 0, node_pos_y: int = 0) -> str:
@@ -529,3 +555,210 @@ def ue_set_mi_static_switch(instance_path: str = None, parameter_name: str = Non
             "traceback": traceback.format_exc(),
             "available_parameters": available_params
         })
+
+
+# --- Asset creation -----------------------------------------------------------
+
+def ue_create_material(material_path: str = None) -> str:
+    """Creates a new Material asset at the given content-browser path."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    try:
+        if unreal.EditorAssetLibrary.does_asset_exist(material_path):
+            return json.dumps({"success": False, "message": f"Asset already exists: {material_path}"})
+        name, package = _split_asset_path(material_path)
+        tools = unreal.AssetToolsHelpers.get_asset_tools()
+        mat = tools.create_asset(name, package, unreal.Material, unreal.MaterialFactoryNew())
+        if not mat:
+            return json.dumps({"success": False, "message": f"Failed to create material at '{material_path}'."})
+        unreal.EditorAssetLibrary.save_loaded_asset(mat)
+        return json.dumps({"success": True, "material_path": material_path,
+                           "message": f"Material created at '{material_path}'."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_create_material_instance(instance_path: str = None, parent_path: str = None) -> str:
+    """Creates a Material Instance Constant, optionally parented to parent_path."""
+    if instance_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'instance_path' is missing."})
+    try:
+        if unreal.EditorAssetLibrary.does_asset_exist(instance_path):
+            return json.dumps({"success": False, "message": f"Asset already exists: {instance_path}"})
+        name, package = _split_asset_path(instance_path)
+        tools = unreal.AssetToolsHelpers.get_asset_tools()
+        mi = tools.create_asset(name, package, unreal.MaterialInstanceConstant,
+                                unreal.MaterialInstanceConstantFactoryNew())
+        if not mi:
+            return json.dumps({"success": False, "message": f"Failed to create material instance at '{instance_path}'."})
+        if parent_path:
+            parent = unreal.EditorAssetLibrary.load_asset(parent_path)
+            if not parent or not isinstance(parent, unreal.MaterialInterface):
+                return json.dumps({"success": False, "message": f"Parent is not a material: {parent_path}"})
+            unreal.MaterialEditingLibrary.set_material_instance_parent(mi, parent)
+        unreal.MaterialEditingLibrary.update_material_instance(mi)
+        unreal.EditorAssetLibrary.save_loaded_asset(mi)
+        return json.dumps({"success": True, "instance_path": instance_path, "parent_path": parent_path,
+                           "message": f"Material instance created at '{instance_path}'."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Graph authoring ----------------------------------------------------------
+
+def ue_connect_property(material_path: str = None, from_expression_identifier: str = None,
+                        from_output_name: str = "", property_name: str = None,
+                        from_expression_class_name: str = None) -> str:
+    """Connects an expression output to a material property (e.g. BaseColor, Metallic, Roughness, Normal)."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    if from_expression_identifier is None:
+        return json.dumps({"success": False, "message": "Required parameter 'from_expression_identifier' is missing."})
+    if property_name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'property_name' is missing.",
+                           "valid_properties": list(_MATERIAL_PROPERTY_MAP)})
+    if property_name not in _MATERIAL_PROPERTY_MAP:
+        return json.dumps({"success": False, "message": f"Unknown property '{property_name}'.",
+                           "valid_properties": list(_MATERIAL_PROPERTY_MAP)})
+    try:
+        material = _get_material_asset(material_path)
+        from_expression = _find_material_expression_by_name_or_type(
+            material, from_expression_identifier, from_expression_class_name)
+        prop = getattr(unreal.MaterialProperty, _MATERIAL_PROPERTY_MAP[property_name])
+        with unreal.ScopedEditorTransaction("MCP: Connect Material Property"):
+            ok = unreal.MaterialEditingLibrary.connect_material_property(from_expression, from_output_name, prop)
+            if not ok:
+                return json.dumps({"success": False,
+                                   "message": f"Failed to connect '{from_expression_identifier}' to '{property_name}'."})
+            unreal.MaterialEditingLibrary.recompile_material(material)
+            unreal.EditorAssetLibrary.save_loaded_asset(material)
+        return json.dumps({"success": True,
+                           "message": f"Connected '{from_expression_identifier}' (out '{from_output_name}') to '{property_name}'."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_delete_expression(material_path: str = None, expression_identifier: str = None,
+                         expression_class_name: str = None) -> str:
+    """Deletes a material expression node identified by name/desc/type."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    if expression_identifier is None:
+        return json.dumps({"success": False, "message": "Required parameter 'expression_identifier' is missing."})
+    try:
+        material = _get_material_asset(material_path)
+        expression = _find_material_expression_by_name_or_type(material, expression_identifier, expression_class_name)
+        with unreal.ScopedEditorTransaction("MCP: Delete Material Expression"):
+            # delete_material_expression returns None regardless of outcome, so
+            # confirm by comparing the expression count before/after.
+            before = unreal.MaterialEditingLibrary.get_num_material_expressions(material)
+            unreal.MaterialEditingLibrary.delete_material_expression(material, expression)
+            after = unreal.MaterialEditingLibrary.get_num_material_expressions(material)
+            unreal.MaterialEditingLibrary.recompile_material(material)
+            unreal.EditorAssetLibrary.save_loaded_asset(material)
+        if after >= before:
+            return json.dumps({"success": False,
+                               "message": f"Expression '{expression_identifier}' was not removed (count {before}->{after})."})
+        return json.dumps({"success": True,
+                           "message": f"Deleted expression '{expression_identifier}' (count {before}->{after})."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_expression_property(material_path: str = None, expression_identifier: str = None,
+                               property_name: str = None, value=None,
+                               expression_class_name: str = None) -> str:
+    """
+    Sets an editor property on a material expression (e.g. 'r' on a Constant,
+    'parameter_name'/'default_value' on a ScalarParameter). A 3/4-element list is
+    coerced to a LinearColor; 'parameter_name' is coerced to an unreal.Name.
+    """
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    if expression_identifier is None:
+        return json.dumps({"success": False, "message": "Required parameter 'expression_identifier' is missing."})
+    if property_name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'property_name' is missing."})
+    try:
+        material = _get_material_asset(material_path)
+        expression = _find_material_expression_by_name_or_type(material, expression_identifier, expression_class_name)
+        coerced = value
+        if property_name == "parameter_name":
+            coerced = unreal.Name(str(value))
+        elif isinstance(value, list) and len(value) in (3, 4):
+            r, g, b = float(value[0]), float(value[1]), float(value[2])
+            a = float(value[3]) if len(value) == 4 else 1.0
+            coerced = unreal.LinearColor(r, g, b, a)
+        with unreal.ScopedEditorTransaction("MCP: Set Material Expression Property"):
+            expression.set_editor_property(property_name, coerced)
+            unreal.MaterialEditingLibrary.recompile_material(material)
+            unreal.EditorAssetLibrary.save_loaded_asset(material)
+        return json.dumps({"success": True,
+                           "message": f"Set '{property_name}' on '{expression_identifier}'."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_layout_expressions(material_path: str = None) -> str:
+    """Auto-lays out all expression nodes in a material graph."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    try:
+        material = _get_material_asset(material_path)
+        with unreal.ScopedEditorTransaction("MCP: Layout Material Expressions"):
+            unreal.MaterialEditingLibrary.layout_material_expressions(material)
+            unreal.EditorAssetLibrary.save_loaded_asset(material)
+        return json.dumps({"success": True, "message": f"Laid out expressions in '{material_path}'."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Read / introspection -----------------------------------------------------
+
+def ue_get_material_info(material_path: str = None) -> str:
+    """Returns expression count and a list of expressions (name, class, position) for a material."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    try:
+        material = _get_material_asset(material_path)
+        count = unreal.MaterialEditingLibrary.get_num_material_expressions(material)
+        expressions = []
+        mat_path = material.get_path_name()
+        for x in unreal.ObjectIterator():
+            if isinstance(x, unreal.MaterialExpression) and x.get_path_name().startswith(mat_path):
+                try:
+                    pos = unreal.MaterialEditingLibrary.get_material_expression_node_position(x)
+                    pos_xy = [int(pos.x), int(pos.y)]
+                except Exception:
+                    pos_xy = None
+                expressions.append({
+                    "name": x.get_name(),
+                    "desc": x.desc if hasattr(x, "desc") else "",
+                    "class": x.__class__.__name__,
+                    "position": pos_xy,
+                })
+        return json.dumps({"success": True, "material_path": material_path,
+                           "expression_count": count, "expressions": expressions})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_parameters(material_path: str = None) -> str:
+    """Lists scalar / vector / texture / static-switch parameter names for a material or material instance."""
+    if material_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'material_path' is missing."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(material_path)
+        if not asset or not isinstance(asset, unreal.MaterialInterface):
+            return json.dumps({"success": False, "message": f"Asset is not a material/instance: {material_path}"})
+        mel = unreal.MaterialEditingLibrary
+        return json.dumps({
+            "success": True,
+            "material_path": material_path,
+            "scalar": [str(n) for n in mel.get_scalar_parameter_names(asset)],
+            "vector": [str(n) for n in mel.get_vector_parameter_names(asset)],
+            "texture": [str(n) for n in mel.get_texture_parameter_names(asset)],
+            "static_switch": [str(n) for n in mel.get_static_switch_parameter_names(asset)],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

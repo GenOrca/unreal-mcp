@@ -263,9 +263,29 @@ CATALOG = {
             'params': 'material_path, from_expression_identifier, from_output_name, to_expression_identifier, to_input_name, from_expression_class_name, to_expression_class_name',
             'doc': 'Creates a connection between two material expressions.',
         },
+        'connect_property': {
+            'params': "material_path, from_expression_identifier, from_output_name='', property_name, from_expression_class_name",
+            'doc': 'Connects an expression output to a material property (e.g. BaseColor, Metallic, Roughness, Normal).',
+        },
         'create_expression': {
             'params': 'material_path, expression_class_name, node_pos_x=0, node_pos_y=0',
             'doc': 'Creates a new material expression node within the supplied material.',
+        },
+        'create_material': {
+            'params': 'material_path',
+            'doc': 'Creates a new Material asset at the given content-browser path.',
+        },
+        'create_material_instance': {
+            'params': 'instance_path, parent_path',
+            'doc': 'Creates a Material Instance Constant, optionally parented to parent_path.',
+        },
+        'delete_expression': {
+            'params': 'material_path, expression_identifier, expression_class_name',
+            'doc': 'Deletes a material expression node identified by name/desc/type.',
+        },
+        'get_material_info': {
+            'params': 'material_path',
+            'doc': 'Returns expression count and a list of expressions (name, class, position) for a material.',
         },
         'get_mi_scalar_param': {
             'params': 'instance_path, parameter_name',
@@ -283,9 +303,21 @@ CATALOG = {
             'params': 'instance_path, parameter_name',
             'doc': 'Gets a vector parameter from a Material Instance. Returns JSON string.',
         },
+        'layout_expressions': {
+            'params': 'material_path',
+            'doc': 'Auto-lays out all expression nodes in a material graph.',
+        },
+        'list_parameters': {
+            'params': 'material_path',
+            'doc': 'Lists scalar / vector / texture / static-switch parameter names for a material or material instance.',
+        },
         'recompile': {
             'params': 'material_path',
             'doc': "Triggers a recompile of a material or material instance's parent. Saves the asset.",
+        },
+        'set_expression_property': {
+            'params': 'material_path, expression_identifier, property_name, value, expression_class_name',
+            'doc': "Sets an editor property on a material expression (e.g. 'r' on a Constant,",
         },
         'set_mi_scalar_param': {
             'params': 'instance_path, parameter_name, value',
