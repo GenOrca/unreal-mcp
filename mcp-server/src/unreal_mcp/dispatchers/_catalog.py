@@ -424,6 +424,32 @@ CATALOG = {
             'doc': "Sets the GameMode Override on the current level's World Settings.",
         },
     },
+    'layer': {
+        'add_actor_to_layer': {
+            'params': 'actor_label, layer_name',
+            'doc': 'Adds an actor to a layer (creates the layer if needed).',
+        },
+        'create_layer': {
+            'params': 'layer_name',
+            'doc': 'Creates a new (empty) layer.',
+        },
+        'delete_layer': {
+            'params': 'layer_name',
+            'doc': 'Deletes a layer.',
+        },
+        'get_actors_in_layer': {
+            'params': 'layer_name',
+            'doc': 'Lists the labels of actors assigned to a layer.',
+        },
+        'list_layers': {
+            'params': '',
+            'doc': 'Lists all layer names in the current world.',
+        },
+        'remove_actor_from_layer': {
+            'params': 'actor_label, layer_name',
+            'doc': 'Removes an actor from a layer.',
+        },
+    },
     'level': {
         'create_level': {
             'params': 'level_path',
@@ -564,6 +590,28 @@ CATALOG = {
         'set_mi_vector_param': {
             'params': 'instance_path, parameter_name, value',
             'doc': 'Sets a vector parameter on a Material Instance. Expects value as [R,G,B,A]. Returns JSON string.',
+        },
+    },
+    'static_mesh': {
+        'add_simple_collision': {
+            'params': "asset_path, shape='BOX'",
+            'doc': 'Adds a simple collision primitive to a StaticMesh. shape: BOX, SPHERE, CAPSULE, NDOP10_X/Y/Z, NDOP18, NDOP26.',
+        },
+        'get_collision_info': {
+            'params': 'asset_path',
+            'doc': 'Returns collision complexity and simple/convex collision counts of a StaticMesh.',
+        },
+        'get_static_mesh_info': {
+            'params': 'asset_path',
+            'doc': 'Returns LOD/section/triangle/vertex/material counts and Nanite state of a StaticMesh.',
+        },
+        'list_static_mesh_materials': {
+            'params': 'asset_path',
+            'doc': 'Lists the material slots of a StaticMesh (slot index + material path).',
+        },
+        'set_static_mesh_material': {
+            'params': 'asset_path, slot_index, material_path',
+            'doc': 'Assigns a material to a StaticMesh material slot.',
         },
     },
     'umg': {
