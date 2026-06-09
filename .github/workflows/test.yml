@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  offline-gates:
+    name: Offline gates (no editor)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      # Gate 1: catalog must match the live ue_* signatures (param-name drift guard).
+      - name: Catalog drift guard
+        working-directory: mcp-server
+        run: uv run python validate_tools.py
+
+      # Gate 2 (offline part): dispatcher routing + unwrap + action-coverage.
+      # E2E tests auto-skip here because no Unreal editor is listening on :12029.
+      - name: Pytest (routing, unwrap, coverage)
+        working-directory: mcp-server
+        run: uv run --extra dev pytest -q
