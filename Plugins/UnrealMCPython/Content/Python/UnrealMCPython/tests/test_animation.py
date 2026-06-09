@@ -5,6 +5,8 @@ from UnrealMCPython.tests.base import MCPTestCase, TEST_ROOT
 _SRC_ANIM = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/Tutorial_Idle"
 _ANIM_NAME = "MCP_TestAnim"
 _ANIM_PATH = f"{TEST_ROOT}/{_ANIM_NAME}"
+# Engine skeletal mesh that ships with 7 sockets — used read-only for socket queries.
+_TPP_MESH = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/TutorialTPP"
 
 
 class TestAnimationActions(MCPTestCase):
@@ -110,3 +112,46 @@ class TestAnimationActions(MCPTestCase):
         r = self.call("animation_actions", "ue_remove_curve",
                       asset_path=self._anim_path, curve_name="NoSuchCurve_XYZ")
         self.assertFalse(r.get("success"))
+
+    # ── skeletal mesh / socket queries (read-only engine assets) ─────────────────
+
+    def test_get_skeletal_mesh_info(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        r = self.call("animation_actions", "ue_get_skeletal_mesh_info", asset_path=_TPP_MESH)
+        self.assertSuccess(r)
+        self.assertIsNotNone(r["skeleton"])
+        self.assertGreater(r["num_sockets"], 0)
+
+    def test_list_sockets(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        r = self.call("animation_actions", "ue_list_sockets", asset_path=_TPP_MESH)
+        self.assertSuccess(r)
+        self.assertEqual(r["num_sockets"], len(r["sockets"]))
+        self.assertIn("bone", r["sockets"][0])
+
+    def test_find_socket(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        listed = self.call("animation_actions", "ue_list_sockets", asset_path=_TPP_MESH)
+        name = listed["sockets"][0]["name"]
+        r = self.call("animation_actions", "ue_find_socket", asset_path=_TPP_MESH, socket_name=name)
+        self.assertSuccess(r)
+        self.assertEqual(r["name"], name)
+
+    def test_find_socket_unknown(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_TPP_MESH):
+            self.skipTest("Engine TutorialTPP mesh not available")
+        r = self.call("animation_actions", "ue_find_socket",
+                      asset_path=_TPP_MESH, socket_name="NoSuchSocket_XYZ")
+        self.assertFalse(r.get("success"))
+
+    def test_get_skeleton_info(self):
+        if not self._anim_path:
+            self.skipTest("Test AnimSequence not available")
+        skel_path = self.call("animation_actions", "ue_get_anim_sequence_info",
+                              asset_path=self._anim_path)["skeleton"].split(".")[0]
+        r = self.call("animation_actions", "ue_get_skeleton_info", asset_path=skel_path)
+        self.assertSuccess(r)
+        self.assertIn("curve_names", r)

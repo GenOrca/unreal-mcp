@@ -201,3 +201,96 @@ def ue_remove_curve(asset_path: str = None, curve_name: str = None) -> str:
                            "curves": [str(n) for n in AL.get_animation_curve_names(seq, _RCT_FLOAT)]})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- SkeletalMesh / Skeleton queries ------------------------------------------
+
+def _load_skeletal_mesh(asset_path: str):
+    sm = unreal.EditorAssetLibrary.load_asset(asset_path)
+    if not sm:
+        raise FileNotFoundError(f"SkeletalMesh not found at path: {asset_path}")
+    if not isinstance(sm, unreal.SkeletalMesh):
+        raise TypeError(f"Asset at {asset_path} is not a SkeletalMesh, but {type(sm).__name__}")
+    return sm
+
+
+def ue_get_skeletal_mesh_info(asset_path: str = None) -> str:
+    """Returns the skeleton path, socket count, and material-slot count of a SkeletalMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        skel = sm.skeleton
+        return json.dumps({
+            "success": True,
+            "asset_path": asset_path,
+            "skeleton": skel.get_path_name() if skel else None,
+            "num_sockets": sm.num_sockets(),
+            "num_materials": len(sm.materials),
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_sockets(asset_path: str = None) -> str:
+    """Lists sockets on a SkeletalMesh (name, bone, relative location/rotation)."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        sockets = []
+        for i in range(sm.num_sockets()):
+            s = sm.get_socket_by_index(i)
+            loc = s.relative_location
+            rot = s.relative_rotation
+            sockets.append({
+                "name": str(s.socket_name),
+                "bone": str(s.bone_name),
+                "relative_location": [round(loc.x, 3), round(loc.y, 3), round(loc.z, 3)],
+                "relative_rotation": [round(rot.pitch, 3), round(rot.yaw, 3), round(rot.roll, 3)],
+            })
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "num_sockets": len(sockets), "sockets": sockets})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_find_socket(asset_path: str = None, socket_name: str = None) -> str:
+    """Returns details of a named socket on a SkeletalMesh, or success=False if not found."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    if socket_name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'socket_name' is missing."})
+    try:
+        sm = _load_skeletal_mesh(asset_path)
+        s = sm.find_socket(unreal.Name(socket_name))
+        if not s:
+            return json.dumps({"success": False, "message": f"Socket '{socket_name}' not found."})
+        loc = s.relative_location
+        rot = s.relative_rotation
+        return json.dumps({
+            "success": True, "asset_path": asset_path,
+            "name": str(s.socket_name), "bone": str(s.bone_name),
+            "relative_location": [round(loc.x, 3), round(loc.y, 3), round(loc.z, 3)],
+            "relative_rotation": [round(rot.pitch, 3), round(rot.yaw, 3), round(rot.roll, 3)],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_skeleton_info(asset_path: str = None) -> str:
+    """Returns curve metadata names for a Skeleton asset."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        skel = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not skel:
+            return json.dumps({"success": False, "message": f"Skeleton not found at path: {asset_path}"})
+        if not isinstance(skel, unreal.Skeleton):
+            return json.dumps({"success": False, "message": f"Asset at {asset_path} is not a Skeleton, but {type(skel).__name__}"})
+        return json.dumps({
+            "success": True, "asset_path": asset_path,
+            "curve_names": [str(n) for n in skel.get_curve_meta_data_names()],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

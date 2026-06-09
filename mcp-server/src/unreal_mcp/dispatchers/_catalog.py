@@ -87,9 +87,21 @@ CATALOG = {
             'params': 'asset_path, track_name, marker_name, time_seconds',
             'doc': 'Adds a sync marker at a time (seconds) on a notify track. Creates the track if needed.',
         },
+        'find_socket': {
+            'params': 'asset_path, socket_name',
+            'doc': 'Returns details of a named socket on a SkeletalMesh, or success=False if not found.',
+        },
         'get_anim_sequence_info': {
             'params': 'asset_path',
             'doc': 'Returns length, frame count, approximate fps, and skeleton path of an AnimSequence.',
+        },
+        'get_skeletal_mesh_info': {
+            'params': 'asset_path',
+            'doc': 'Returns the skeleton path, socket count, and material-slot count of a SkeletalMesh.',
+        },
+        'get_skeleton_info': {
+            'params': 'asset_path',
+            'doc': 'Returns curve metadata names for a Skeleton asset.',
         },
         'list_curves': {
             'params': 'asset_path',
@@ -102,6 +114,10 @@ CATALOG = {
         'list_notify_tracks': {
             'params': 'asset_path',
             'doc': 'Lists the notify track names on an AnimSequence.',
+        },
+        'list_sockets': {
+            'params': 'asset_path',
+            'doc': 'Lists sockets on a SkeletalMesh (name, bone, relative location/rotation).',
         },
         'list_sync_markers': {
             'params': 'asset_path',
