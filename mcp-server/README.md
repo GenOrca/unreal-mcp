@@ -26,7 +26,7 @@ It enables smooth communication between MCP clients (e.g., Claude, Cursor, Winds
 ## Key Features
 
 - MCP server for communication with Unreal Engine
-- Built-in routers for various operations (e.g., Actor, Asset, Editor, etc)
+- 16 namespace dispatcher tools (actor, material, blueprint, animation, asset, …) exposing 191 actions, each callable as `{action, params}`
 - Supports Python 3.11 and later
 
 # Installation

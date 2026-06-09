@@ -18,6 +18,7 @@
 
 <p align="center">
   <a href="#features">Features</a> &middot;
+  <a href="#how-tools-work">How Tools Work</a> &middot;
   <a href="#installation">Installation</a> &middot;
   <a href="#usage">Usage</a> &middot;
   <a href="#tools-reference">Tools Reference</a> &middot;
@@ -26,9 +27,9 @@
 
 ---
 
-Unreal MCP connects AI assistants to the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, build Blueprint graphs, construct Behavior Trees, design UMG widgets, edit materials — all from natural language.
+Unreal MCP connects AI assistants to the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, build Blueprint graphs, construct Behavior Trees, design UMG widgets, edit materials, author cinematics — all from natural language.
 
-84 built-in tools, with direct access to all of Unreal Engine's Python API — any BlueprintCallable function, any editor subsystem, anything the engine exposes to Python. No C++, no recompilation.
+**191 actions across 16 domains**, plus direct access to all of Unreal Engine's Python API — any BlueprintCallable function, any editor subsystem, anything the engine exposes to Python. No C++, no recompilation.
 
 <p align="center">
   <a href="https://youtu.be/V7KyjzFlBLk?si=QaqVqmt6YL59DHg4">
@@ -40,18 +41,46 @@ Unreal MCP connects AI assistants to the Unreal Editor through the [Model Contex
 
 ## Features
 
-| Category | Capabilities | Tools |
+Each row is one **namespace tool**. The action set is large but the tool list stays small, so it never bloats the model's context.
+
+| Domain | Capabilities | Actions |
 |---|---|:---:|
-| **Actor Manipulation** | Spawn, duplicate, transform, delete actors. Surface raycasting. View frustum queries. Property get/set. | 17 |
-| **Level Management** | Create and open levels. List level actors with optional class filter. Configure world settings (gravity, time dilation). | 4 |
-| **Asset Management** | Search and filter assets by name/type. Static mesh detail retrieval. | 2 |
-| **Material System** | Create and connect expressions. Material instance parameters (scalar, vector, texture, static switch). Recompilation. | 11 |
-| **Blueprint Graph** | Read graph structure, nodes, pins, and variables. Add, connect, remove nodes. Build and compile entire graphs. SCS component management. Auto layout. | 16 |
-| **Behavior Tree** | Create and read Behavior Trees. Manage Blackboard assets and keys. Build complete BT hierarchies. | 12 |
-| **UMG Widget Blueprint** | Create Widget Blueprints. Add/remove widgets (15 types). Set properties, slot layout, text style, and widget C++ properties. Compile. | 10 |
-| **Editor Tools** | Selection management. Material/mesh replacement on actors. Blueprint-based replacement. | 6 |
-| **Game Settings** | Game mode configuration. Input action and mapping setup. | 3 |
-| **Utilities** | Execute arbitrary Python with full access to Unreal Engine's Python API. Output log retrieval. LiveCoding compile. | 3 |
+| **actor** | Spawn (class/object/surface raycast), transform get/set, properties, live component properties, hierarchy (attach/detach), folders, tags, layers, bounds, selection, duplication, class queries. | 36 |
+| **material** | Create materials & instances, author expression graphs, connect to material properties, MI parameters (scalar/vector/texture/switch), reparent, auto-layout, introspection. | 20 |
+| **blueprint** | Create Blueprints, read/build graphs, add/connect/remove nodes, member variables (+ flags), SCS components, compile, auto-layout. | 19 |
+| **animation** | AnimSequence info, notify tracks, sync markers, float curves; SkeletalMesh sockets & bones (C++-backed); skeleton info. | 17 |
+| **asset** | Duplicate/rename/delete/save, list, dependencies & referencers, metadata tags, directories, search. | 16 |
+| **util** | Run arbitrary Unreal Python, console commands & CVars, viewport camera, PIE control, project info, class/enum reflection, output log, LiveCoding compile. | 15 |
+| **behavior_tree** | Create & read Behavior Trees, Blackboard keys, build complete BT hierarchies. | 12 |
+| **umg** | Create Widget Blueprints, add/remove widgets (15 types), properties, slot layout, text style, compile. | 10 |
+| **level_sequence** | Create cinematics, spawnable/possessable bindings, transform tracks & keyframes, playback range. | 8 |
+| **data_table** | Create DataTables, read/write rows (JSON/CSV), columns, row management. | 8 |
+| **level** | Create/open levels, list actors, world settings, current-level path, save. | 7 |
+| **layer** | Create/delete layers, assign actors, list layer contents. | 6 |
+| **editor** | Selection, material/mesh replacement, Blueprint-based replacement. | 6 |
+| **static_mesh** | Mesh info (LODs/tris/verts), materials, collision (info + simple primitives). | 5 |
+| **game** | Game mode, Enhanced Input actions & mappings. | 3 |
+| **texture** | Texture info, sRGB and compression settings. | 3 |
+
+## How Tools Work
+
+Each domain is a single MCP tool. You call it with an `action` name and a `params` object:
+
+```jsonc
+// tool: "actor"
+{ "action": "spawn_from_class",
+  "params": { "class_path": "/Script/Engine.PointLight", "location": [0, 0, 200] } }
+```
+
+To discover what a domain can do and the exact parameters each action takes, pass `list_actions`:
+
+```jsonc
+// tool: "material"
+{ "action": "list_actions" }
+// → { "actions": { "create_expression": { "params": "...", "doc": "..." }, ... } }
+```
+
+Need something not covered by a built-in action? Use `util / execute_python` to run any Unreal Python directly — the full engine API is available with no C++ build.
 
 ## Installation
 
@@ -128,7 +157,7 @@ Add the server to your MCP client config:
 
 1. Restart your MCP client
 2. The MCP server starts automatically
-3. Verify — you should see Unreal-MCPython tools listed in your client
+3. Verify — you should see the 16 Unreal-MCPython domain tools listed in your client
 
 ## Usage
 
@@ -137,172 +166,125 @@ Just describe what you want in natural language:
 ```
 "Place 10 trees randomly on the terrain surface"
 "Find all static meshes with 'rock' in the name"
-"Set the base color of MI_Ground to dark brown"
+"Create M_Ground, add a Constant3Vector for base color, and connect it"
 "Explain what the selected Blueprint nodes do"
-"Add a PrintString node to BP_Player's EventGraph and connect it to BeginPlay"
-"Build a Blueprint graph with event tick, delta time, and a timeline node"
-"Create a Behavior Tree with a Selector root, two Sequences, and MoveTo/Wait tasks"
-"Create a HUD widget with a health bar and score label, set the text to 'Score: 0'"
-"Add a CanvasPanel root to WBP_MainMenu and place a TextBlock at position (200, 100) with font size 48"
+"Create BP_Door from Actor, add a bool 'IsOpen' variable exposed on spawn"
+"Build a Behavior Tree with a Selector root and MoveTo/Wait tasks"
+"Create a HUD widget with a health bar and a 'Score: 0' label"
+"Make a 6-second level sequence with a CineCamera flying from (0,0,200) to (1200,600,500)"
+"Tag all PointLights in the level and move them to a 'Lighting' layer"
 ```
 
 ## Tools Reference
 
-<details>
-<summary><strong>Actor Manipulation</strong> (17 tools)</summary>
+Pass any action below to its domain tool. Use `{ "action": "list_actions" }` on a domain to see each action's parameters and docs.
 
-| Tool | Description |
-|---|---|
-| `spawn_from_object` | Spawn actor from an existing asset |
-| `spawn_from_class` | Spawn actor from a class |
-| `spawn_on_surface_raycast` | Spawn actor on surface via raycast |
-| `duplicate_selected` | Duplicate selected actors |
-| `delete_by_label` | Delete actors by label |
-| `select_all` | Select all actors |
-| `invert_selection` | Invert current selection |
-| `list_all_with_locations` | List all actors with locations |
-| `get_all_details` | Get detailed info for actors |
-| `set_transform` | Set full transform (location, rotation, scale) |
-| `set_location` | Set actor location |
-| `set_rotation` | Set actor rotation |
-| `set_scale` | Set actor scale |
-| `get_property` | Get actor property value |
-| `set_property` | Set actor property value |
-| `line_trace` | Perform line trace raycast |
-| `get_in_view_frustum` | Get actors in camera view frustum |
+<details>
+<summary><strong>actor</strong> (36)</summary>
+
+`spawn_from_class` · `spawn_from_object` · `spawn_on_surface_raycast` · `duplicate_actor` · `duplicate_selected` · `delete_by_label` · `rename_actor` · `set_actor_hidden` · `select_actors` · `select_all` · `invert_selection` · `get_selected_actors` · `list_all_with_locations` · `get_all_details` · `get_actors_of_class` · `get_in_view_frustum` · `get_transform` · `set_transform` · `set_location` · `set_rotation` · `set_scale` · `get_property` · `set_property` · `get_component_property` · `set_component_property` · `list_actor_components` · `attach_actor` · `detach_actor` · `get_attached_actors` · `set_actor_folder` · `get_actor_folder` · `add_actor_tag` · `remove_actor_tag` · `get_actor_tags` · `get_actor_bounds` · `line_trace`
 
 </details>
 
 <details>
-<summary><strong>Level Management</strong> (4 tools)</summary>
+<summary><strong>material</strong> (20)</summary>
 
-| Tool | Description |
-|---|---|
-| `create_level` | Create a new empty level and open it |
-| `load_level` | Open an existing level by content-browser path |
-| `list_level_actors` | List all actors in the current level (optional class filter) |
-| `set_world_settings` | Set gravity and time dilation for the current level |
+`create_material` · `create_material_instance` · `set_instance_parent` · `create_expression` · `set_expression_property` · `delete_expression` · `connect_expressions` · `connect_property` · `layout_expressions` · `recompile` · `get_material_info` · `list_parameters` · `get_mi_scalar_param` · `set_mi_scalar_param` · `get_mi_vector_param` · `set_mi_vector_param` · `get_mi_texture_param` · `set_mi_texture_param` · `get_mi_static_switch` · `set_mi_static_switch`
 
 </details>
 
 <details>
-<summary><strong>Asset Management</strong> (2 tools)</summary>
+<summary><strong>blueprint</strong> (19)</summary>
 
-| Tool | Description |
-|---|---|
-| `find_by_query` | Search and filter assets by name/type |
-| `get_static_mesh_details` | Get static mesh details |
+`create_blueprint` · `get_blueprint_graph_info` · `list_callable_functions` · `list_blueprint_variables` · `add_variable` · `set_variable_flags` · `add_blueprint_node` · `connect_blueprint_pins` · `remove_blueprint_node` · `set_blueprint_node_position` · `build_blueprint_graph` · `auto_layout_graph` · `compile_blueprint` · `get_selected_bp_nodes` · `get_selected_bp_node_infos` · `list_blueprint_components` · `add_component_to_blueprint` · `remove_component_from_blueprint` · `set_component_property`
 
 </details>
 
 <details>
-<summary><strong>Material System</strong> (11 tools)</summary>
+<summary><strong>animation</strong> (17)</summary>
 
-| Tool | Description |
-|---|---|
-| `create_expression` | Create material expression node |
-| `connect_expressions` | Connect two material expressions |
-| `recompile` | Recompile material |
-| `get_mi_scalar_param` | Get scalar parameter from material instance |
-| `set_mi_scalar_param` | Set scalar parameter on material instance |
-| `get_mi_vector_param` | Get vector parameter from material instance |
-| `set_mi_vector_param` | Set vector parameter on material instance |
-| `get_mi_texture_param` | Get texture parameter from material instance |
-| `set_mi_texture_param` | Set texture parameter on material instance |
-| `get_mi_static_switch` | Get static switch from material instance |
-| `set_mi_static_switch` | Set static switch on material instance |
+`get_anim_sequence_info` · `list_notify_tracks` · `add_notify_track` · `remove_notify_track` · `list_notifies` · `list_sync_markers` · `add_sync_marker` · `list_curves` · `add_float_curve` · `remove_curve` · `get_skeletal_mesh_info` · `list_sockets` · `find_socket` · `add_socket` · `remove_socket` · `list_bones` · `get_skeleton_info`
 
 </details>
 
 <details>
-<summary><strong>Blueprint Graph</strong> (16 tools)</summary>
+<summary><strong>asset</strong> (16)</summary>
 
-| Tool | Description |
-|---|---|
-| `get_selected_bp_nodes` | Get selected Blueprint nodes |
-| `get_selected_bp_node_infos` | Get detailed info for selected nodes |
-| `get_blueprint_graph_info` | Read full graph structure |
-| `list_callable_functions` | List callable functions in Blueprint context |
-| `list_blueprint_variables` | List Blueprint variables |
-| `add_blueprint_node` | Add a node to a graph |
-| `connect_blueprint_pins` | Connect two pins |
-| `remove_blueprint_node` | Remove a node |
-| `build_blueprint_graph` | Build entire graph from JSON |
-| `compile_blueprint` | Compile Blueprint |
-| `list_blueprint_components` | List all SCS components on a Blueprint |
-| `add_component_to_blueprint` | Add a component to Blueprint's SCS |
-| `remove_component_from_blueprint` | Remove a component from Blueprint's SCS |
-| `set_component_property` | Set a property on a Blueprint component template |
-| `set_blueprint_node_position` | Move a Blueprint graph node to given coordinates |
-| `auto_layout_graph` | Auto-layout all nodes in a Blueprint graph |
+`find_by_query` · `get_asset_info` · `asset_exists` · `list_assets` · `duplicate_asset` · `rename_asset` · `delete_asset` · `save_asset` · `get_dependencies` · `find_referencers` · `get_metadata_tag` · `set_metadata_tag` · `remove_metadata_tag` · `make_directory` · `delete_directory` · `get_static_mesh_details`
 
 </details>
 
 <details>
-<summary><strong>Behavior Tree</strong> (12 tools)</summary>
+<summary><strong>util</strong> (15)</summary>
 
-| Tool | Description |
-|---|---|
-| `list_behavior_trees` | List all Behavior Tree assets |
-| `get_behavior_tree_structure` | Read BT structure |
-| `get_blackboard_data` | Get Blackboard data |
-| `get_bt_node_details` | Get BT node details |
-| `get_selected_bt_nodes` | Get selected BT nodes |
-| `create_behavior_tree` | Create new Behavior Tree |
-| `create_blackboard` | Create new Blackboard |
-| `add_blackboard_key` | Add key to Blackboard |
-| `remove_blackboard_key` | Remove key from Blackboard |
-| `set_blackboard_to_behavior_tree` | Assign Blackboard to BT |
-| `build_behavior_tree` | Build complete BT hierarchy |
-| `list_bt_node_classes` | List available BT node classes |
+`execute_python` · `execute_console_command` · `get_cvar` · `get_output_log` · `print_message` · `get_project_info` · `list_class_properties` · `list_enum_values` · `get_viewport_camera` · `set_viewport_camera` · `is_in_pie` · `start_pie` · `stop_pie` · `save_all_dirty` · `livecoding_compile`
 
 </details>
 
 <details>
-<summary><strong>UMG Widget Blueprint</strong> (10 tools)</summary>
+<summary><strong>behavior_tree</strong> (12)</summary>
 
-| Tool | Description |
-|---|---|
-| `create_widget_blueprint` | Create a new Widget Blueprint asset |
-| `get_widget_blueprint_info` | Get widget tree hierarchy and widget list |
-| `add_widget` | Add a widget to the tree (15 supported types) |
-| `set_widget_properties` | Set text, font size, color, visibility, canvas slot layout |
-| `remove_widget` | Remove a widget from the tree |
-| `compile_widget_blueprint` | Compile and validate the Widget Blueprint |
-| `set_slot_layout` | Set CanvasPanelSlot layout (anchor, position, size, alignment) |
-| `set_text_style` | Set font size, text color, and outline on a TextBlock |
-| `get_widget_property` | Get a C++ UPROPERTY value on a named widget |
-| `set_widget_property` | Set a C++ UPROPERTY value on a named widget |
-
-**Supported widget types:** CanvasPanel, TextBlock, Button, Image, HorizontalBox, VerticalBox, Border, Overlay, ScrollBox, SizeBox, CheckBox, EditableText, EditableTextBox, ProgressBar, Slider
+`list_behavior_trees` · `create_behavior_tree` · `get_behavior_tree_structure` · `build_behavior_tree` · `list_bt_node_classes` · `get_bt_node_details` · `get_selected_bt_nodes` · `create_blackboard` · `get_blackboard_data` · `add_blackboard_key` · `remove_blackboard_key` · `set_blackboard_to_behavior_tree`
 
 </details>
 
 <details>
-<summary><strong>Editor Tools</strong> (6 tools)</summary>
+<summary><strong>umg</strong> (10)</summary>
 
-| Tool | Description |
-|---|---|
-| `get_selected_assets` | Get currently selected assets |
-| `replace_mtl_on_selected` | Replace material on selected actors |
-| `replace_mtl_on_specified` | Replace material on specified actors |
-| `replace_mesh_on_selected` | Replace mesh on selected actors |
-| `replace_mesh_on_specified` | Replace mesh on specified actors |
-| `replace_selected_with_bp` | Replace selected actors with Blueprint |
+`create_widget_blueprint` · `get_widget_blueprint_info` · `add_widget` · `remove_widget` · `set_widget_properties` · `set_widget_property` · `get_widget_property` · `set_slot_layout` · `set_text_style` · `compile_widget_blueprint`
+
+**Widget types:** CanvasPanel, TextBlock, Button, Image, HorizontalBox, VerticalBox, Border, Overlay, ScrollBox, SizeBox, CheckBox, EditableText, EditableTextBox, ProgressBar, Slider
 
 </details>
 
 <details>
-<summary><strong>Game Settings</strong> (3 tools) &amp; <strong>Utilities</strong> (3 tools)</summary>
+<summary><strong>level_sequence</strong> (8)</summary>
 
-| Tool | Description |
-|---|---|
-| `set_game_mode` | Set game mode |
-| `add_input_action` | Add input action |
-| `add_input_mapping` | Add input mapping |
-| `get_output_log` | Retrieve Unreal output log |
-| `execute_python` | Execute arbitrary Python code with full access to Unreal Engine's Python API |
-| `livecoding_compile` | Trigger a LiveCoding C++ hot-reload compile without restarting the editor |
+`create_level_sequence` · `get_sequence_info` · `set_playback_range` · `add_spawnable_from_class` · `add_possessable` · `remove_binding` · `add_transform_track` · `add_transform_keyframe`
+
+</details>
+
+<details>
+<summary><strong>data_table</strong> (8)</summary>
+
+`create_data_table` · `get_row_names` · `get_column_names` · `get_rows_as_json` · `export_to_csv` · `does_row_exist` · `remove_row` · `set_rows_from_json`
+
+</details>
+
+<details>
+<summary><strong>level</strong> (7)</summary>
+
+`create_level` · `load_level` · `get_current_level_path` · `save_current_level` · `save_all_levels` · `list_level_actors` · `set_world_settings`
+
+</details>
+
+<details>
+<summary><strong>layer</strong> (6)</summary>
+
+`list_layers` · `create_layer` · `delete_layer` · `add_actor_to_layer` · `remove_actor_from_layer` · `get_actors_in_layer`
+
+</details>
+
+<details>
+<summary><strong>editor</strong> (6)</summary>
+
+`get_selected_assets` · `replace_mtl_on_selected` · `replace_mtl_on_specified` · `replace_mesh_on_selected` · `replace_mesh_on_specified` · `replace_selected_with_bp`
+
+</details>
+
+<details>
+<summary><strong>static_mesh</strong> (5)</summary>
+
+`get_static_mesh_info` · `list_static_mesh_materials` · `set_static_mesh_material` · `get_collision_info` · `add_simple_collision`
+
+</details>
+
+<details>
+<summary><strong>game</strong> (3) &amp; <strong>texture</strong> (3)</summary>
+
+**game:** `set_game_mode` · `add_input_action` · `add_input_mapping`
+
+**texture:** `get_texture_info` · `set_texture_srgb` · `set_texture_compression`
 
 </details>
 
@@ -314,10 +296,11 @@ Just describe what you want in natural language:
 | Path errors | Check the absolute path in your client config |
 | Plugin not visible | Restart UE and confirm both plugins are enabled |
 | Tools not showing | Restart your MCP client and verify the config |
+| An action errors on params | Call `{ "action": "list_actions" }` on that domain to see exact parameter names |
 
 ## Contributing
 
-Issues, feature requests, and pull requests are welcome on [GitHub](https://github.com/GenOrca/unreal-mcp).
+Issues, feature requests, and pull requests are welcome on [GitHub](https://github.com/GenOrca/unreal-mcp). See [CLAUDE.md](CLAUDE.md) for the architecture and the workflow for adding new actions.
 
 ## License
 
