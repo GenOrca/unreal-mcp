@@ -326,3 +326,14 @@ class TestActorActions(MCPTestCase):
                       actor_label=self._actor_label, component_name="NoSuchComp",
                       property_name="intensity")
         self.assertFalse(r.get("success"))
+
+    def test_duplicate_actor(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_duplicate_actor",
+                      actor_label=self._actor_label, offset=[150, 0, 0])
+        self.assertSuccess(r)
+        self.delete_actor_by_label(r["duplicated"])
+
+    def test_duplicate_actor_unknown(self):
+        r = self.call("actor_actions", "ue_duplicate_actor", actor_label="NoSuchActor_XYZ")
+        self.assertFalse(r.get("success"))

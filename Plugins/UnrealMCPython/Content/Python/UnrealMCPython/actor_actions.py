@@ -1043,3 +1043,23 @@ def ue_set_component_property(actor_label: str = None, component_name: str = Non
                            "property": property_name, "value": _serialize_ue_value(comp.get_editor_property(property_name))})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_duplicate_actor(actor_label: str = None, offset: list = None) -> str:
+    """Duplicates a specific actor (by label) with an optional [x,y,z] offset."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        off = offset or [0.0, 0.0, 0.0]
+        if len(off) != 3:
+            return json.dumps({"success": False, "message": "offset must be a list of 3 floats."})
+        sub = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        dup = sub.duplicate_actor(actor, offset=unreal.Vector(float(off[0]), float(off[1]), float(off[2])))
+        if not dup:
+            return json.dumps({"success": False, "message": "Duplication failed."})
+        return json.dumps({"success": True, "source": actor_label, "duplicated": dup.get_actor_label()})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

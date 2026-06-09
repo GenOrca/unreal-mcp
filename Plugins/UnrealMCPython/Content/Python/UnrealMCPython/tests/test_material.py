@@ -263,3 +263,10 @@ class TestMaterialActions(MCPTestCase):
         self.assertSuccess(r)
         self.assertIn("TestScalar", r["scalar"])
         self.assertIn("TestVector", r["vector"])
+
+    def test_set_instance_parent(self):
+        if not self._mi_path or not self._mat_path:
+            self.skipTest("MI/Material not created in setUp")
+        r = self.call("material_actions", "ue_set_instance_parent",
+                      instance_path=self._mi_path, parent_path=self._mat_path)
+        self.assertSuccess(r)

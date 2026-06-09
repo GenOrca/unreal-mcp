@@ -21,6 +21,10 @@ CATALOG = {
             'params': 'actor_label',
             'doc': 'Detaches an actor from its parent (keeps world transform).',
         },
+        'duplicate_actor': {
+            'params': 'actor_label, offset',
+            'doc': 'Duplicates a specific actor (by label) with an optional [x,y,z] offset.',
+        },
         'duplicate_selected': {
             'params': 'offset',
             'doc': 'Duplicates all selected actors in the editor and applies a position offset to each duplicate.',
@@ -626,6 +630,10 @@ CATALOG = {
         'set_expression_property': {
             'params': 'material_path, expression_identifier, property_name, value, expression_class_name',
             'doc': "Sets an editor property on a material expression (e.g. 'r' on a Constant,",
+        },
+        'set_instance_parent': {
+            'params': 'instance_path, parent_path',
+            'doc': 'Reparents a Material Instance Constant to a new parent material/instance.',
         },
         'set_mi_scalar_param': {
             'params': 'instance_path, parameter_name, value',

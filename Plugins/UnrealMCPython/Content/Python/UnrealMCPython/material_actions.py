@@ -762,3 +762,20 @@ def ue_list_parameters(material_path: str = None) -> str:
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_instance_parent(instance_path: str = None, parent_path: str = None) -> str:
+    """Reparents a Material Instance Constant to a new parent material/instance."""
+    if instance_path is None or parent_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: instance_path, parent_path."})
+    try:
+        instance = _get_material_instance_asset(instance_path)
+        parent = unreal.EditorAssetLibrary.load_asset(parent_path)
+        if not parent or not isinstance(parent, unreal.MaterialInterface):
+            return json.dumps({"success": False, "message": f"Parent is not a material/instance: {parent_path}"})
+        unreal.MaterialEditingLibrary.set_material_instance_parent(instance, parent)
+        unreal.MaterialEditingLibrary.update_material_instance(instance)
+        unreal.EditorAssetLibrary.save_loaded_asset(instance)
+        return json.dumps({"success": True, "instance_path": instance_path, "parent_path": parent_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
