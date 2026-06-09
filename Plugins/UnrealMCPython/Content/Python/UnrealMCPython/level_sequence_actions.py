@@ -60,14 +60,28 @@ def _split_asset_path(asset_path: str):
     return asset_path[idx + 1:], asset_path[:idx]
 
 
-def _get_or_create_transform_section(binding):
-    """Return the first MovieScene3DTransformTrack section on a binding, creating it if needed."""
+def _get_or_create_transform_section(seq, binding):
+    """
+    Return the first MovieScene3DTransformTrack section on a binding, creating it
+    if needed. A freshly created section is zero-length, so ensure it spans at
+    least the sequence's playback range — otherwise keys land outside the section
+    and are invisible/unusable in Sequencer.
+    """
+    section = None
     for track in binding.get_tracks():
         if isinstance(track, unreal.MovieScene3DTransformTrack):
             sections = track.get_sections()
-            return sections[0] if sections else track.add_section()
-    track = binding.add_track(unreal.MovieScene3DTransformTrack)
-    return track.add_section()
+            section = sections[0] if sections else track.add_section()
+            break
+    if section is None:
+        track = binding.add_track(unreal.MovieScene3DTransformTrack)
+        section = track.add_section()
+
+    start = seq.get_playback_start_seconds()
+    end = seq.get_playback_end_seconds()
+    if section.get_end_frame_seconds() - section.get_start_frame_seconds() < (end - start):
+        section.set_range_seconds(start, end)
+    return section
 
 
 # --- Actions ------------------------------------------------------------------
@@ -216,8 +230,7 @@ def ue_add_transform_track(asset_path: str = None, binding_name: str = None) -> 
         with _suppress():
             seq = _load_sequence(asset_path)
             binding = _find_binding(seq, binding_name)
-            section = _get_or_create_transform_section(binding)
-            section.set_range_seconds(seq.get_playback_start_seconds(), seq.get_playback_end_seconds())
+            _get_or_create_transform_section(seq, binding)
             unreal.EditorAssetLibrary.save_loaded_asset(seq)
         return json.dumps({"success": True, "asset_path": asset_path, "binding_name": binding_name,
                            "message": f"Added transform track to '{binding_name}'."})
@@ -244,7 +257,12 @@ def ue_add_transform_keyframe(asset_path: str = None, binding_name: str = None, 
         with _suppress():
             seq = _load_sequence(asset_path)
             binding = _find_binding(seq, binding_name)
-            section = _get_or_create_transform_section(binding)
+            section = _get_or_create_transform_section(seq, binding)
+            # Extend the section so the key is inside it (otherwise it's not visible).
+            if float(time_seconds) > section.get_end_frame_seconds():
+                section.set_range_seconds(section.get_start_frame_seconds(), float(time_seconds))
+            elif float(time_seconds) < section.get_start_frame_seconds():
+                section.set_range_seconds(float(time_seconds), section.get_end_frame_seconds())
             frame = unreal.FrameNumber(int(round(float(time_seconds) * _fps(seq))))
             # Channel order is fixed: 0-2 Location XYZ, 3-5 Rotation XYZ, 6-8 Scale XYZ.
             chans = section.get_all_channels()
@@ -257,8 +275,11 @@ def ue_add_transform_keyframe(asset_path: str = None, binding_name: str = None, 
                 for i in range(3):
                     chans[offset + i].add_key(frame, float(values[i]))
                 keyed.append(label)
+            section_range = [round(section.get_start_frame_seconds(), 4),
+                             round(section.get_end_frame_seconds(), 4)]
             unreal.EditorAssetLibrary.save_loaded_asset(seq)
         return json.dumps({"success": True, "asset_path": asset_path, "binding_name": binding_name,
-                           "frame": int(round(float(time_seconds) * _fps(seq))), "keyed": keyed})
+                           "frame": int(round(float(time_seconds) * _fps(seq))), "keyed": keyed,
+                           "section_range_seconds": section_range})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

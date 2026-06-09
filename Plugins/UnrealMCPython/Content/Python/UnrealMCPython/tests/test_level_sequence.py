@@ -106,6 +106,20 @@ class TestLevelSequenceActions(MCPTestCase):
         self.assertSuccess(r)
         self.assertIn("location", r["keyed"])
         self.assertIn("rotation", r["keyed"])
+        # The section must span the keyed time, or the keys are invisible in Sequencer.
+        start, end = r["section_range_seconds"]
+        self.assertGreater(end, start)
+        self.assertGreaterEqual(end, 2.0)
+
+    def test_keyframe_beyond_range_extends_section(self):
+        self._skip_if_no_seq()
+        name = self._add_camera()
+        # Key past the 5s playback end → section must extend to include it.
+        r = self.call("level_sequence_actions", "ue_add_transform_keyframe",
+                      asset_path=self._seq_path, binding_name=name, time_seconds=8.0,
+                      location=[0.0, 0.0, 0.0])
+        self.assertSuccess(r)
+        self.assertGreaterEqual(r["section_range_seconds"][1], 8.0)
 
     def test_add_transform_keyframe_no_channels(self):
         self._skip_if_no_seq()
