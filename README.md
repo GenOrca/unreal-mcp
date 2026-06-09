@@ -19,6 +19,7 @@
 <p align="center">
   <a href="#features">Features</a> &middot;
   <a href="#how-tools-work">How Tools Work</a> &middot;
+  <a href="#extending">Extending</a> &middot;
   <a href="#installation">Installation</a> &middot;
   <a href="#usage">Usage</a> &middot;
   <a href="#tools-reference">Tools Reference</a> &middot;
@@ -29,7 +30,9 @@
 
 Unreal MCP connects AI assistants to the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, build Blueprint graphs, construct Behavior Trees, design UMG widgets, edit materials, author cinematics — all from natural language.
 
-**191 actions across 16 domains**, plus direct access to all of Unreal Engine's Python API — any BlueprintCallable function, any editor subsystem, anything the engine exposes to Python. No C++, no recompilation.
+**191 actions across 16 domains**, plus `execute_python` as an escape hatch — run any BlueprintCallable function or editor subsystem the engine exposes to Python, on the fly.
+
+**Easy to extend.** Most tools are plain Python: add a function to a domain module, run the catalog generator, and it becomes a new action — no C++ and no editor rebuild. For the rare capability Python doesn't expose (e.g. reference-skeleton bones), a small optional C++ helper layer is there too. See [CLAUDE.md](CLAUDE.md) for the step-by-step workflow.
 
 <p align="center">
   <a href="https://youtu.be/V7KyjzFlBLk?si=QaqVqmt6YL59DHg4">
@@ -81,6 +84,20 @@ To discover what a domain can do and the exact parameters each action takes, pas
 ```
 
 Need something not covered by a built-in action? Use `util / execute_python` to run any Unreal Python directly — the full engine API is available with no C++ build.
+
+## Extending
+
+Adding a tool is intentionally low-friction — anyone comfortable with Python can do it:
+
+1. Add a `ue_<name>(...)` function (returning a JSON string) to a domain module in
+   `Plugins/UnrealMCPython/Content/Python/UnrealMCPython/<domain>_actions.py`.
+2. Run `python generate_catalog.py` — the action is now exposed by its domain tool.
+3. (Optional) add an in-editor test in `tests/test_<domain>.py`.
+
+No C++ and no editor rebuild for Python actions. New domain? Drop in a
+`<domain>_actions.py` and list it in the generator. For the rare API Python doesn't
+expose, an optional C++ helper (`MCPythonHelper`) is available. Full details in
+[CLAUDE.md](CLAUDE.md).
 
 ## Installation
 
