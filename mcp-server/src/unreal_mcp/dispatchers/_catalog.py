@@ -5,17 +5,45 @@
 
 CATALOG = {
     'actor': {
+        'add_actor_tag': {
+            'params': 'actor_label, tag',
+            'doc': 'Adds a tag to an actor (Actor.Tags).',
+        },
+        'attach_actor': {
+            'params': "child_label, parent_label, socket_name=''",
+            'doc': 'Attaches one actor to another (keeps world transform). Optional socket on the parent.',
+        },
         'delete_by_label': {
             'params': 'actor_label',
             'doc': 'Deletes an actor with the specified name from the current level.',
+        },
+        'detach_actor': {
+            'params': 'actor_label',
+            'doc': 'Detaches an actor from its parent (keeps world transform).',
         },
         'duplicate_selected': {
             'params': 'offset',
             'doc': 'Duplicates all selected actors in the editor and applies a position offset to each duplicate.',
         },
+        'get_actor_bounds': {
+            'params': 'actor_label',
+            'doc': "Returns an actor's world-space bounds (origin + box extent).",
+        },
+        'get_actor_folder': {
+            'params': 'actor_label',
+            'doc': 'Returns the World Outliner folder path of an actor.',
+        },
+        'get_actor_tags': {
+            'params': 'actor_label',
+            'doc': 'Returns the gameplay tags (Actor.Tags) of an actor.',
+        },
         'get_all_details': {
             'params': '',
             'doc': 'Lists all actors in the current level with detailed information including',
+        },
+        'get_attached_actors': {
+            'params': 'actor_label',
+            'doc': 'Lists the labels of actors attached to the given actor.',
         },
         'get_in_view_frustum': {
             'params': '',
@@ -33,13 +61,25 @@ CATALOG = {
             'params': "ray_start, ray_end, trace_channel='Visibility', actors_to_ignore_labels, trace_complex=True",
             'doc': 'Performs a line trace (raycast) and returns hit information without spawning anything.',
         },
+        'list_actor_components': {
+            'params': 'actor_label',
+            'doc': 'Lists the components on an actor (name + class).',
+        },
         'list_all_with_locations': {
             'params': '',
             'doc': 'Lists all actors in the current level along with their world locations.',
         },
+        'remove_actor_tag': {
+            'params': 'actor_label, tag',
+            'doc': 'Removes a tag from an actor (Actor.Tags).',
+        },
         'select_all': {
             'params': '',
             'doc': 'Selects all actors in the current level.',
+        },
+        'set_actor_folder': {
+            'params': 'actor_label, folder_path',
+            'doc': 'Sets the World Outliner folder path of an actor.',
         },
         'set_location': {
             'params': 'actor_label, location',

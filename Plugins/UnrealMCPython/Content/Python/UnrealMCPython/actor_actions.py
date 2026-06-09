@@ -745,3 +745,165 @@ def ue_get_in_view_frustum() -> str:
 
     except Exception as e:
         return json.dumps({"success": False, "message": f"Error in ue_get_in_view_frustum: {str(e)}", "type": type(e).__name__})
+
+
+# --- Actor hierarchy / folders / tags / components ----------------------------
+
+def ue_attach_actor(child_label: str = None, parent_label: str = None, socket_name: str = "") -> str:
+    """Attaches one actor to another (keeps world transform). Optional socket on the parent."""
+    if child_label is None or parent_label is None:
+        return json.dumps({"success": False, "message": "Required parameters: child_label, parent_label."})
+    try:
+        child = _get_actor_by_label(child_label)
+        parent = _get_actor_by_label(parent_label)
+        if not child:
+            return json.dumps({"success": False, "message": f"Child actor not found: {child_label}"})
+        if not parent:
+            return json.dumps({"success": False, "message": f"Parent actor not found: {parent_label}"})
+        rule = unreal.AttachmentRule.KEEP_WORLD
+        child.attach_to_actor(parent, unreal.Name(socket_name), rule, rule, rule, False)
+        return json.dumps({"success": True, "child": child_label, "parent": parent_label})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_detach_actor(actor_label: str = None) -> str:
+    """Detaches an actor from its parent (keeps world transform)."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        rule = unreal.DetachmentRule.KEEP_WORLD
+        actor.detach_from_actor(rule, rule, rule)
+        return json.dumps({"success": True, "actor_label": actor_label})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_attached_actors(actor_label: str = None) -> str:
+    """Lists the labels of actors attached to the given actor."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        children = [a.get_actor_label() for a in actor.get_attached_actors()]
+        parent = actor.get_attach_parent_actor()
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "attached": children,
+                           "parent": parent.get_actor_label() if parent else None})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_actor_folder(actor_label: str = None, folder_path: str = None) -> str:
+    """Sets the World Outliner folder path of an actor."""
+    if actor_label is None or folder_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, folder_path."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        actor.set_folder_path(unreal.Name(folder_path))
+        return json.dumps({"success": True, "actor_label": actor_label, "folder_path": folder_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_actor_folder(actor_label: str = None) -> str:
+    """Returns the World Outliner folder path of an actor."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "folder_path": str(actor.get_folder_path())})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_actor_components(actor_label: str = None) -> str:
+    """Lists the components on an actor (name + class)."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        comps = [{"name": c.get_name(), "class": c.get_class().get_name()}
+                 for c in actor.get_components_by_class(unreal.ActorComponent)]
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "count": len(comps), "components": comps})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_actor_tags(actor_label: str = None) -> str:
+    """Returns the gameplay tags (Actor.Tags) of an actor."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "tags": [str(t) for t in actor.tags]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_add_actor_tag(actor_label: str = None, tag: str = None) -> str:
+    """Adds a tag to an actor (Actor.Tags)."""
+    if actor_label is None or tag is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, tag."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        tags = list(actor.tags)
+        if unreal.Name(tag) not in tags:
+            tags.append(unreal.Name(tag))
+            actor.tags = tags
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "tags": [str(t) for t in actor.tags]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_remove_actor_tag(actor_label: str = None, tag: str = None) -> str:
+    """Removes a tag from an actor (Actor.Tags)."""
+    if actor_label is None or tag is None:
+        return json.dumps({"success": False, "message": "Required parameters: actor_label, tag."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        tags = [t for t in actor.tags if str(t) != tag]
+        actor.tags = tags
+        return json.dumps({"success": True, "actor_label": actor_label,
+                           "tags": [str(t) for t in actor.tags]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_actor_bounds(actor_label: str = None) -> str:
+    """Returns an actor's world-space bounds (origin + box extent)."""
+    if actor_label is None:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_label' is missing."})
+    try:
+        actor = _get_actor_by_label(actor_label)
+        if not actor:
+            return json.dumps({"success": False, "message": f"Actor not found: {actor_label}"})
+        origin, extent = actor.get_actor_bounds(False)
+        return json.dumps({
+            "success": True, "actor_label": actor_label,
+            "origin": [round(origin.x, 3), round(origin.y, 3), round(origin.z, 3)],
+            "extent": [round(extent.x, 3), round(extent.y, 3), round(extent.z, 3)],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

@@ -182,3 +182,71 @@ class TestActorActions(MCPTestCase):
             self.delete_actor_by_label(r["actor_label"])
         finally:
             self.delete_actor_by_label(floor["actor_label"])
+
+    # ── folders / tags / components / bounds ─────────────────────────────────────
+
+    def test_set_get_actor_folder(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_set_actor_folder",
+                      actor_label=self._actor_label, folder_path="MCP/TestFolder")
+        self.assertSuccess(r)
+        r = self.call("actor_actions", "ue_get_actor_folder", actor_label=self._actor_label)
+        self.assertSuccess(r)
+        self.assertEqual(r["folder_path"], "MCP/TestFolder")
+
+    def test_actor_tags(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_add_actor_tag",
+                      actor_label=self._actor_label, tag="MCP_Tag")
+        self.assertSuccess(r)
+        self.assertIn("MCP_Tag", r["tags"])
+        r = self.call("actor_actions", "ue_get_actor_tags", actor_label=self._actor_label)
+        self.assertIn("MCP_Tag", r["tags"])
+        r = self.call("actor_actions", "ue_remove_actor_tag",
+                      actor_label=self._actor_label, tag="MCP_Tag")
+        self.assertSuccess(r)
+        self.assertNotIn("MCP_Tag", r["tags"])
+
+    def test_list_actor_components(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_list_actor_components", actor_label=self._actor_label)
+        self.assertSuccess(r)
+        self.assertGreater(r["count"], 0)
+
+    def test_get_actor_bounds(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_get_actor_bounds", actor_label=self._actor_label)
+        self.assertSuccess(r)
+        self.assertEqual(len(r["extent"]), 3)
+
+    def test_get_actor_bounds_unknown(self):
+        r = self.call("actor_actions", "ue_get_actor_bounds", actor_label="NoSuchActor_XYZ")
+        self.assertFalse(r.get("success"))
+
+    # ── attach / detach ──────────────────────────────────────────────────────────
+
+    def test_attach_and_detach(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        spawn = self.call("actor_actions", "ue_spawn_from_class",
+                          class_path=_CLASS_PATH, location=[300, 300, 300])
+        self.assertSuccess(spawn)
+        child = spawn["actor_label"]
+        try:
+            r = self.call("actor_actions", "ue_attach_actor",
+                          child_label=child, parent_label=self._actor_label)
+            self.assertSuccess(r)
+            r = self.call("actor_actions", "ue_get_attached_actors", actor_label=self._actor_label)
+            self.assertSuccess(r)
+            self.assertIn(child, r["attached"])
+            r = self.call("actor_actions", "ue_detach_actor", actor_label=child)
+            self.assertSuccess(r)
+            r = self.call("actor_actions", "ue_get_attached_actors", actor_label=self._actor_label)
+            self.assertNotIn(child, r["attached"])
+        finally:
+            self.delete_actor_by_label(child)
+
+    def test_attach_unknown_parent(self):
+        self.assertIsNotNone(self._actor_label, "no setUp actor")
+        r = self.call("actor_actions", "ue_attach_actor",
+                      child_label=self._actor_label, parent_label="NoSuchActor_XYZ")
+        self.assertFalse(r.get("success"))
