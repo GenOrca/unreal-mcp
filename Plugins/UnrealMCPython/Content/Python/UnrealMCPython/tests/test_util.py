@@ -40,6 +40,8 @@ class TestUtilActions(MCPTestCase):
 
     def test_get_and_set_viewport_camera(self):
         cur = self.call("util_actions", "ue_get_viewport_camera")
+        if not cur.get("success") and "No active level viewport" in cur.get("message", ""):
+            self.skipTest("No active level viewport (e.g. editor launched without a focused viewport)")
         self.assertSuccess(cur)
         self.assertEqual(len(cur["location"]), 3)
         try:

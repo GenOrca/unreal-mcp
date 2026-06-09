@@ -76,7 +76,10 @@ def ue_save_all_dirty() -> str:
 def ue_get_viewport_camera() -> str:
     """Returns the level viewport camera location and rotation."""
     try:
-        loc, rot = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_level_viewport_camera_info()
+        info = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_level_viewport_camera_info()
+        if not info:
+            return json.dumps({"success": False, "message": "No active level viewport."})
+        loc, rot = info
         return json.dumps({
             "success": True,
             "location": [round(loc.x, 3), round(loc.y, 3), round(loc.z, 3)],
