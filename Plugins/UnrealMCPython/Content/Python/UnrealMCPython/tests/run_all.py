@@ -17,6 +17,7 @@ import unittest
 _MODULES = [
     "UnrealMCPython.tests.test_util",
     "UnrealMCPython.tests.test_actor",
+    "UnrealMCPython.tests.test_animation",
     "UnrealMCPython.tests.test_asset",
     "UnrealMCPython.tests.test_level",
     "UnrealMCPython.tests.test_level_sequence",

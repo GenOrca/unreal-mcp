@@ -74,6 +74,48 @@ CATALOG = {
             'doc': '',
         },
     },
+    'animation': {
+        'add_float_curve': {
+            'params': 'asset_path, curve_name, time_seconds, value',
+            'doc': 'Adds a float curve to an AnimSequence, optionally with an initial key at time_seconds=value.',
+        },
+        'add_notify_track': {
+            'params': 'asset_path, track_name',
+            'doc': 'Adds a notify track to an AnimSequence.',
+        },
+        'add_sync_marker': {
+            'params': 'asset_path, track_name, marker_name, time_seconds',
+            'doc': 'Adds a sync marker at a time (seconds) on a notify track. Creates the track if needed.',
+        },
+        'get_anim_sequence_info': {
+            'params': 'asset_path',
+            'doc': 'Returns length, frame count, approximate fps, and skeleton path of an AnimSequence.',
+        },
+        'list_curves': {
+            'params': 'asset_path',
+            'doc': 'Lists float animation curve names on an AnimSequence.',
+        },
+        'list_notifies': {
+            'params': 'asset_path',
+            'doc': 'Lists notify event names on an AnimSequence.',
+        },
+        'list_notify_tracks': {
+            'params': 'asset_path',
+            'doc': 'Lists the notify track names on an AnimSequence.',
+        },
+        'list_sync_markers': {
+            'params': 'asset_path',
+            'doc': 'Lists sync markers (name + time) on an AnimSequence.',
+        },
+        'remove_curve': {
+            'params': 'asset_path, curve_name',
+            'doc': 'Removes a float curve from an AnimSequence.',
+        },
+        'remove_notify_track': {
+            'params': 'asset_path, track_name',
+            'doc': 'Removes a notify track (and its notifies) from an AnimSequence.',
+        },
+    },
     'asset': {
         'find_by_query': {
             'params': 'name, asset_type',
