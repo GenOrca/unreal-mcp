@@ -35,6 +35,9 @@ _EXCLUDE = {
     ("util", "livecoding_compile"),
     ("util", "start_pie"),
     ("util", "stop_pie"),
+    # save_current_level can raise a modal Save-As dialog on an untitled level.
+    ("level", "save_current_level"),
+    ("level", "save_all_levels"),
 }
 
 

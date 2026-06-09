@@ -429,6 +429,10 @@ CATALOG = {
             'params': 'level_path',
             'doc': 'Creates a new empty level and saves it at the given content-browser path.',
         },
+        'get_current_level_path': {
+            'params': '',
+            'doc': 'Returns the path of the currently open editor world/level.',
+        },
         'list_level_actors': {
             'params': 'class_filter',
             'doc': 'Lists all actors in the current level.',
@@ -436,6 +440,14 @@ CATALOG = {
         'load_level': {
             'params': 'level_path',
             'doc': 'Opens (loads) an existing level in the editor.',
+        },
+        'save_all_levels': {
+            'params': '',
+            'doc': 'Saves all dirty levels.',
+        },
+        'save_current_level': {
+            'params': '',
+            'doc': 'Saves the currently open level. Returns success=False for an unsaved/untitled level.',
         },
         'set_world_settings': {
             'params': 'gravity, time_dilation',

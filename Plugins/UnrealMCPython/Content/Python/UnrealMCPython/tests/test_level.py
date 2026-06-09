@@ -55,3 +55,15 @@ class TestLevelActions(MCPTestCase):
     def test_load_level_missing_path(self):
         r = self.call("level_actions", "ue_load_level")
         self.assertFalse(r.get("success"))
+
+    # ── current level ────────────────────────────────────────────────────────────
+
+    def test_get_current_level_path(self):
+        r = self.call("level_actions", "ue_get_current_level_path")
+        self.assertSuccess(r)
+        self.assertIn("level_path", r)
+        self.assertTrue(r["level_path"])
+
+    # save_current_level / save_all_levels are not auto-tested: on an unsaved
+    # (untitled) level save_current_level can raise a modal Save-As dialog that
+    # would hang the headless suite. Verified manually instead (see KNOWN_UNTESTED).

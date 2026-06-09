@@ -38,6 +38,10 @@ KNOWN_UNTESTED: dict[str, set[str]] = {
     # headless suite (which never ticks between calls) would leave the editor in PIE.
     # Verified manually through the MCP chain instead.
     "util": {"start_pie", "stop_pie"},
+    # save_current_level can raise a modal Save-As dialog on an untitled level,
+    # which would hang the headless suite; save_all_levels is grouped with it.
+    # Verified manually instead.
+    "level": {"save_current_level", "save_all_levels"},
 }
 
 

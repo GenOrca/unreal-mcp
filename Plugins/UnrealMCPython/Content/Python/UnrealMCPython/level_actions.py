@@ -108,3 +108,37 @@ def ue_set_world_settings(gravity: float = None, time_dilation: float = None) ->
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
+
+
+# --- Current level info / saving ----------------------------------------------
+
+def ue_get_current_level_path() -> str:
+    """Returns the path of the currently open editor world/level."""
+    try:
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        if not world:
+            return json.dumps({"success": False, "message": "No editor world is open."})
+        return json.dumps({"success": True, "level_path": world.get_path_name(),
+                           "level_name": world.get_name()})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_save_current_level() -> str:
+    """Saves the currently open level. Returns success=False for an unsaved/untitled level."""
+    try:
+        ok = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
+        return json.dumps({"success": bool(ok),
+                           "message": "Saved current level." if ok else "save_current_level returned False (untitled or unsaved level)."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_save_all_levels() -> str:
+    """Saves all dirty levels."""
+    try:
+        ok = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_all_dirty_levels()
+        return json.dumps({"success": bool(ok),
+                           "message": "Saved all dirty levels." if ok else "save_all_dirty_levels returned False (nothing to save)."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
