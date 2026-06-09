@@ -523,6 +523,10 @@ CATALOG = {
         },
     },
     'util': {
+        'execute_console_command': {
+            'params': 'command',
+            'doc': "Executes an editor console command (e.g. 'stat fps', 'r.ScreenPercentage 50').",
+        },
         'execute_python': {
             'params': 'code',
             'doc': 'Runs arbitrary Unreal Python code. Full API access; fastest path to prototype new actions.',
@@ -531,6 +535,14 @@ CATALOG = {
             'params': 'line_count=50, keyword',
             'doc': 'Returns recent lines from the Unreal Engine output log file.',
         },
+        'get_viewport_camera': {
+            'params': '',
+            'doc': 'Returns the level viewport camera location and rotation.',
+        },
+        'is_in_pie': {
+            'params': '',
+            'doc': 'Returns whether Play-In-Editor is currently active.',
+        },
         'livecoding_compile': {
             'params': '',
             'doc': 'Triggers C++ Live Coding and waits for the compile result.',
@@ -538,6 +550,22 @@ CATALOG = {
         'print_message': {
             'params': 'message',
             'doc': 'Logs a message to the Unreal log and returns a JSON success response.',
+        },
+        'save_all_dirty': {
+            'params': '',
+            'doc': 'Saves all dirty packages (modified maps and content).',
+        },
+        'set_viewport_camera': {
+            'params': 'location, rotation',
+            'doc': 'Sets the level viewport camera. location=[x,y,z], rotation=[pitch,yaw,roll].',
+        },
+        'start_pie': {
+            'params': '',
+            'doc': 'Starts Play-In-Editor (asynchronous; begins on the next frame).',
+        },
+        'stop_pie': {
+            'params': '',
+            'doc': 'Stops Play-In-Editor.',
         },
     },
 }

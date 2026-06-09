@@ -23,3 +23,38 @@ class TestUtilActions(MCPTestCase):
     def test_print_message_missing_param(self):
         r = self.call("util_actions", "ue_print_message")
         self.assertFalse(r.get("success"))
+
+    # ── editor control ───────────────────────────────────────────────────────────
+
+    def test_execute_console_command(self):
+        r = self.call("util_actions", "ue_execute_console_command", command="stat none")
+        self.assertSuccess(r)
+
+    def test_execute_console_command_missing(self):
+        r = self.call("util_actions", "ue_execute_console_command")
+        self.assertFalse(r.get("success"))
+
+    def test_save_all_dirty(self):
+        r = self.call("util_actions", "ue_save_all_dirty")
+        self.assertIn("success", r)  # may save nothing if clean; must not error
+
+    def test_get_and_set_viewport_camera(self):
+        cur = self.call("util_actions", "ue_get_viewport_camera")
+        self.assertSuccess(cur)
+        self.assertEqual(len(cur["location"]), 3)
+        try:
+            r = self.call("util_actions", "ue_set_viewport_camera",
+                          location=[500.0, 500.0, 500.0], rotation=[0.0, 90.0, 0.0])
+            self.assertSuccess(r)
+        finally:
+            self.call("util_actions", "ue_set_viewport_camera",
+                      location=cur["location"], rotation=cur["rotation"])
+
+    def test_set_viewport_camera_missing(self):
+        r = self.call("util_actions", "ue_set_viewport_camera")
+        self.assertFalse(r.get("success"))
+
+    def test_is_in_pie(self):
+        r = self.call("util_actions", "ue_is_in_pie")
+        self.assertSuccess(r)
+        self.assertIsInstance(r["in_pie"], bool)

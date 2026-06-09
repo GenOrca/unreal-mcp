@@ -48,3 +48,82 @@ def ue_get_output_log(line_count: int = 50, keyword: str = None) -> str:
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Editor control -----------------------------------------------------------
+
+def ue_execute_console_command(command: str = None) -> str:
+    """Executes an editor console command (e.g. 'stat fps', 'r.ScreenPercentage 50')."""
+    if command is None:
+        return json.dumps({"success": False, "message": "Required parameter 'command' is missing."})
+    try:
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        unreal.SystemLibrary.execute_console_command(world, command)
+        return json.dumps({"success": True, "command": command})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_save_all_dirty() -> str:
+    """Saves all dirty packages (modified maps and content)."""
+    try:
+        ok = unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
+        return json.dumps({"success": bool(ok), "message": "Saved dirty packages." if ok else "save_dirty_packages returned False."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_viewport_camera() -> str:
+    """Returns the level viewport camera location and rotation."""
+    try:
+        loc, rot = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_level_viewport_camera_info()
+        return json.dumps({
+            "success": True,
+            "location": [round(loc.x, 3), round(loc.y, 3), round(loc.z, 3)],
+            "rotation": [round(rot.pitch, 3), round(rot.yaw, 3), round(rot.roll, 3)],
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_viewport_camera(location: list = None, rotation: list = None) -> str:
+    """Sets the level viewport camera. location=[x,y,z], rotation=[pitch,yaw,roll]."""
+    if location is None or rotation is None:
+        return json.dumps({"success": False, "message": "Required parameters: location, rotation."})
+    if len(location) != 3 or len(rotation) != 3:
+        return json.dumps({"success": False, "message": "location and rotation must be lists of 3 floats."})
+    try:
+        ues = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+        ues.set_level_viewport_camera_info(
+            unreal.Vector(float(location[0]), float(location[1]), float(location[2])),
+            unreal.Rotator(float(rotation[0]), float(rotation[1]), float(rotation[2])))
+        return json.dumps({"success": True, "location": location, "rotation": rotation})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_is_in_pie() -> str:
+    """Returns whether Play-In-Editor is currently active."""
+    try:
+        active = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).is_in_play_in_editor()
+        return json.dumps({"success": True, "in_pie": bool(active)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_start_pie() -> str:
+    """Starts Play-In-Editor (asynchronous; begins on the next frame)."""
+    try:
+        unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_request_begin_play()
+        return json.dumps({"success": True, "message": "Requested PIE begin."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_stop_pie() -> str:
+    """Stops Play-In-Editor."""
+    try:
+        unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_request_end_play()
+        return json.dumps({"success": True, "message": "Requested PIE end."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
