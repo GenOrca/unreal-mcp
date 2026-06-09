@@ -72,7 +72,9 @@ TArray<UObject*> UMCPythonHelper::GetSelectedBlueprintNodes()
         IAssetEditorInstance* AssetEditorInstance = Subsystem->FindEditorForAsset(Asset, false);
         FAssetEditorToolkit* AssetEditorToolkit = static_cast<FAssetEditorToolkit*>(AssetEditorInstance);
         if (!AssetEditorToolkit) continue;
-        TSharedPtr<SDockTab> Tab = AssetEditorToolkit->GetTabManager()->GetOwnerTab();
+        TSharedPtr<FTabManager> TabManager = AssetEditorToolkit->GetTabManager();
+        if (!TabManager.IsValid()) continue;
+        TSharedPtr<SDockTab> Tab = TabManager->GetOwnerTab();
         if (Tab.IsValid() && Tab->IsForeground())
         {
             FBlueprintEditor* BlueprintEditor = static_cast<FBlueprintEditor*>(AssetEditorToolkit);
@@ -99,7 +101,9 @@ TArray<FMCPythonBlueprintNodeInfo> UMCPythonHelper::GetSelectedBlueprintNodeInfo
         IAssetEditorInstance* AssetEditorInstance = Subsystem->FindEditorForAsset(Asset, false);
         FAssetEditorToolkit* AssetEditorToolkit = static_cast<FAssetEditorToolkit*>(AssetEditorInstance);
         if (!AssetEditorToolkit) continue;
-        TSharedPtr<SDockTab> Tab = AssetEditorToolkit->GetTabManager()->GetOwnerTab();
+        TSharedPtr<FTabManager> TabManager = AssetEditorToolkit->GetTabManager();
+        if (!TabManager.IsValid()) continue;
+        TSharedPtr<SDockTab> Tab = TabManager->GetOwnerTab();
         if (Tab.IsValid() && Tab->IsForeground())
         {
             FBlueprintEditor* BlueprintEditor = static_cast<FBlueprintEditor*>(AssetEditorToolkit);
