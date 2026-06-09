@@ -195,3 +195,18 @@ class TestBlueprintActions(MCPTestCase):
         r = self.call("blueprint_actions", "ue_create_blueprint",
                       asset_path=f"{TEST_ROOT}/MCP_BadBP", parent_class_path="/Script/Engine.NopeXYZ")
         self.assertFalse(r.get("success"))
+
+    def test_add_variable(self):
+        self._skip_if_no_bp()
+        r = self.call("blueprint_actions", "ue_add_variable",
+                      asset_path=self._bp_path, variable_name="MyFloatVar", variable_type="float")
+        self.assertSuccess(r)
+        variables = self.call("blueprint_actions", "ue_list_blueprint_variables",
+                              asset_path=self._bp_path)
+        self.assertSuccess(variables)
+
+    def test_add_variable_bad_type(self):
+        self._skip_if_no_bp()
+        r = self.call("blueprint_actions", "ue_add_variable",
+                      asset_path=self._bp_path, variable_name="X", variable_type="notatype")
+        self.assertFalse(r.get("success"))

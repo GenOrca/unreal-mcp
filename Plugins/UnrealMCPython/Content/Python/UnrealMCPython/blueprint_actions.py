@@ -457,3 +457,33 @@ def ue_create_blueprint(asset_path: str = None, parent_class_path: str = "/Scrip
         return json.dumps({"success": True, "asset_path": asset_path, "parent_class": parent_class_path})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+_BP_VAR_TYPES = {"int", "byte", "bool", "real", "name", "string", "text"}
+
+
+def ue_add_variable(asset_path: str = None, variable_name: str = None, variable_type: str = "real") -> str:
+    """Adds a member variable to a Blueprint. variable_type: int, byte, bool, real (float), name, string, text."""
+    if asset_path is None or variable_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, variable_name."})
+    vt = (variable_type or "real").lower()
+    if vt == "float":
+        vt = "real"
+    if vt not in _BP_VAR_TYPES:
+        return json.dumps({"success": False, "message": f"Unsupported variable_type '{variable_type}'.",
+                           "valid_types": sorted(_BP_VAR_TYPES | {"float"})})
+    try:
+        bp = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not bp or not isinstance(bp, unreal.Blueprint):
+            return json.dumps({"success": False, "message": f"Not a Blueprint: {asset_path}"})
+        bel = unreal.BlueprintEditorLibrary
+        pin = bel.get_basic_type_by_name(unreal.Name(vt))
+        ok = bel.add_member_variable(bp, unreal.Name(variable_name), pin)
+        if not ok:
+            return json.dumps({"success": False, "message": f"add_member_variable failed for '{variable_name}'."})
+        bel.compile_blueprint(bp)
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "variable_name": variable_name, "variable_type": vt})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

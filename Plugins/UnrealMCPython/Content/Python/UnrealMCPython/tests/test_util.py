@@ -80,3 +80,19 @@ class TestUtilActions(MCPTestCase):
     def test_get_cvar_missing(self):
         r = self.call("util_actions", "ue_get_cvar")
         self.assertFalse(r.get("success"))
+
+    def test_get_project_info(self):
+        r = self.call("util_actions", "ue_get_project_info")
+        self.assertSuccess(r)
+        self.assertIn("engine_version", r)
+        self.assertTrue(r["project_dir"])
+
+    def test_list_enum_values(self):
+        r = self.call("util_actions", "ue_list_enum_values",
+                      enum_name="TextureCompressionSettings")
+        self.assertSuccess(r)
+        self.assertIn("TC_DEFAULT", r["values"])
+
+    def test_list_enum_values_unknown(self):
+        r = self.call("util_actions", "ue_list_enum_values", enum_name="NopeEnumXYZ")
+        self.assertFalse(r.get("success"))

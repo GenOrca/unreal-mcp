@@ -158,3 +158,34 @@ def ue_get_cvar(name: str = None) -> str:
         return json.dumps({"success": True, "name": name, "value": value})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_project_info() -> str:
+    """Returns project name, directories, and engine version."""
+    try:
+        return json.dumps({
+            "success": True,
+            "project_name": unreal.SystemLibrary.get_game_name(),
+            "project_dir": unreal.Paths.project_dir(),
+            "content_dir": unreal.Paths.project_content_dir(),
+            "engine_version": unreal.SystemLibrary.get_engine_version(),
+        })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_list_enum_values(enum_name: str = None) -> str:
+    """Lists the values of an Unreal enum by name (e.g. 'TextureCompressionSettings', 'CollisionTraceFlag')."""
+    if enum_name is None:
+        return json.dumps({"success": False, "message": "Required parameter 'enum_name' is missing."})
+    try:
+        short = enum_name.split(".")[-1]
+        cls = getattr(unreal, short, None)
+        if cls is None:
+            return json.dumps({"success": False, "message": f"Enum '{enum_name}' not found in 'unreal' module."})
+        values = [v for v in dir(cls) if not v.startswith("_") and isinstance(getattr(cls, v, None), cls)]
+        if not values:
+            return json.dumps({"success": False, "message": f"'{enum_name}' is not an enum or has no values."})
+        return json.dumps({"success": True, "enum": short, "count": len(values), "values": values})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

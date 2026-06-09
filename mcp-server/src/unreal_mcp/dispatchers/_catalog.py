@@ -345,6 +345,10 @@ CATALOG = {
             'params': "asset_path, component_class_path, component_name, location_x=0.0, location_y=0.0, location_z=0.0, rotation_pitch=0.0, rotation_yaw=0.0, rotation_roll=0.0, parent_component_name=''",
             'doc': "Adds a component to a Blueprint's SCS.",
         },
+        'add_variable': {
+            'params': "asset_path, variable_name, variable_type='real'",
+            'doc': 'Adds a member variable to a Blueprint. variable_type: int, byte, bool, real (float), name, string, text.',
+        },
         'auto_layout_graph': {
             'params': "asset_path, graph_name='EventGraph', x_step=380.0, y_step=200.0",
             'doc': 'Auto-lays out all nodes in a Blueprint graph using DAG topological sort.',
@@ -747,6 +751,10 @@ CATALOG = {
             'params': 'line_count=50, keyword',
             'doc': 'Returns recent lines from the Unreal Engine output log file.',
         },
+        'get_project_info': {
+            'params': '',
+            'doc': 'Returns project name, directories, and engine version.',
+        },
         'get_viewport_camera': {
             'params': '',
             'doc': 'Returns the level viewport camera location and rotation.',
@@ -758,6 +766,10 @@ CATALOG = {
         'list_class_properties': {
             'params': 'class_path',
             'doc': 'Lists the editor-settable property names of a UClass (for discovering what set_property accepts).',
+        },
+        'list_enum_values': {
+            'params': 'enum_name',
+            'doc': "Lists the values of an Unreal enum by name (e.g. 'TextureCompressionSettings', 'CollisionTraceFlag').",
         },
         'livecoding_compile': {
             'params': '',
