@@ -409,6 +409,10 @@ CATALOG = {
             'params': 'asset_path, component_name, property_name, value',
             'doc': "Sets a property on a component template in a Blueprint's SCS.",
         },
+        'set_variable_flags': {
+            'params': 'asset_path, variable_name, instance_editable, expose_on_spawn',
+            'doc': "Sets a Blueprint variable's 'Instance Editable' and/or 'Expose On Spawn' flags.",
+        },
     },
     'data_table': {
         'create_data_table': {

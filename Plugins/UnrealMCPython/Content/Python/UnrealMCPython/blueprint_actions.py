@@ -487,3 +487,31 @@ def ue_add_variable(asset_path: str = None, variable_name: str = None, variable_
                            "variable_name": variable_name, "variable_type": vt})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_variable_flags(asset_path: str = None, variable_name: str = None,
+                          instance_editable: bool = None, expose_on_spawn: bool = None) -> str:
+    """Sets a Blueprint variable's 'Instance Editable' and/or 'Expose On Spawn' flags."""
+    if asset_path is None or variable_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, variable_name."})
+    if instance_editable is None and expose_on_spawn is None:
+        return json.dumps({"success": False, "message": "Provide instance_editable and/or expose_on_spawn."})
+    try:
+        bp = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not bp or not isinstance(bp, unreal.Blueprint):
+            return json.dumps({"success": False, "message": f"Not a Blueprint: {asset_path}"})
+        bel = unreal.BlueprintEditorLibrary
+        name = unreal.Name(variable_name)
+        applied = {}
+        if instance_editable is not None:
+            bel.set_blueprint_variable_instance_editable(bp, name, bool(instance_editable))
+            applied["instance_editable"] = bool(instance_editable)
+        if expose_on_spawn is not None:
+            bel.set_blueprint_variable_expose_on_spawn(bp, name, bool(expose_on_spawn))
+            applied["expose_on_spawn"] = bool(expose_on_spawn)
+        bel.compile_blueprint(bp)
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "variable_name": variable_name, "applied": applied})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

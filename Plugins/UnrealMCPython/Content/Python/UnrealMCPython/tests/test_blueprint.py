@@ -210,3 +210,19 @@ class TestBlueprintActions(MCPTestCase):
         r = self.call("blueprint_actions", "ue_add_variable",
                       asset_path=self._bp_path, variable_name="X", variable_type="notatype")
         self.assertFalse(r.get("success"))
+
+    def test_set_variable_flags(self):
+        self._skip_if_no_bp()
+        self.call("blueprint_actions", "ue_add_variable",
+                  asset_path=self._bp_path, variable_name="FlagVar", variable_type="bool")
+        r = self.call("blueprint_actions", "ue_set_variable_flags",
+                      asset_path=self._bp_path, variable_name="FlagVar",
+                      instance_editable=True, expose_on_spawn=True)
+        self.assertSuccess(r)
+        self.assertTrue(r["applied"]["instance_editable"])
+
+    def test_set_variable_flags_none(self):
+        self._skip_if_no_bp()
+        r = self.call("blueprint_actions", "ue_set_variable_flags",
+                      asset_path=self._bp_path, variable_name="X")
+        self.assertFalse(r.get("success"))
