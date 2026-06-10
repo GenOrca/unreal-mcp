@@ -70,11 +70,11 @@ def test_standard_routing_module_fn_params(recorder):
 
 
 def _standard_action_pairs():
-    """Every (domain, action) routed via the standard path (excludes util specials)."""
+    """Every (domain, action) routed via the standard path (excludes hand-written domains)."""
     pairs = []
     for domain in CATALOG:
-        if domain == "util":
-            continue  # special-cased separately
+        if domain in ("util", "vision"):
+            continue  # special-cased handlers
         for action in CATALOG[domain]:
             pairs.append((domain, action))
     return pairs

@@ -800,4 +800,10 @@ CATALOG = {
             'doc': 'Stops Play-In-Editor.',
         },
     },
+    'vision': {
+        'capture_viewport': {
+            'params': 'width=1280, height=720, fov=90.0',
+            'doc': "Captures the active level viewport (3D scene only) as a PNG, returned base64 in 'image_data'.",
+        },
+    },
 }

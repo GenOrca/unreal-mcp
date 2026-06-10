@@ -31,6 +31,7 @@ _MODULES = [
     "UnrealMCPython.tests.test_static_mesh",
     "UnrealMCPython.tests.test_layer",
     "UnrealMCPython.tests.test_texture",
+    "UnrealMCPython.tests.test_vision",
 ]
 
 suite = unittest.TestSuite()

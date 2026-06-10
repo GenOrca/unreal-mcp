@@ -12,9 +12,10 @@ The catalog is AUTO-GENERATED from the plugin's ue_* signatures
 no hand transcription. This file never grows when actions are added.
 """
 
+import base64
 from typing import Annotated
 from pydantic import Field
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Image
 
 from unreal_mcp.core import send_to_unreal, UnrealExecutionError, send_python_exec, send_livecoding_compile
 from unreal_mcp.dispatchers._catalog import CATALOG
@@ -28,8 +29,10 @@ dispatcher_mcp = FastMCP(
     )
 )
 
-# Domains using standard python_call routing (util has special-cased actions).
-_STANDARD_DOMAINS = [d for d in CATALOG if d != "util"]
+# Domains using standard python_call routing. util and vision have hand-written
+# handlers (special TCP types / MCP Image return).
+_SPECIAL_DOMAINS = {"util", "vision"}
+_STANDARD_DOMAINS = [d for d in CATALOG if d not in _SPECIAL_DOMAINS]
 
 
 def _module(domain: str) -> str:
@@ -100,3 +103,29 @@ async def util(
             return {"success": False, "message": str(e)}
 
     return {"success": False, "message": f"Unknown action '{action}'. Available: {list(CATALOG['util'])}"}
+
+
+# ─── vision: special routing (returns an MCP Image for captures) ────────────────
+
+@dispatcher_mcp.tool(name="vision", description=_desc("vision"))
+async def vision(
+    action: Annotated[str, Field(description="Action name. Use 'list_actions' for full parameter docs.")],
+    params: Annotated[dict, Field(description="Action parameters. capture_viewport: {width, height, fov}.")] = {}
+) -> "Image | dict":
+    if action == "list_actions":
+        return {"success": True, "domain": "vision", "actions": CATALOG["vision"]}
+
+    if action not in CATALOG["vision"]:
+        return {"success": False, "message": f"Unknown action '{action}'. Available: {list(CATALOG['vision'])}"}
+
+    try:
+        result = await send_to_unreal(_module("vision"), f"ue_{action}", params)
+    except UnrealExecutionError as e:
+        return {"success": False, "message": str(e)}
+
+    # Capture actions return base64 PNG in 'image_data' → hand back an MCP Image.
+    if isinstance(result, dict):
+        img_b64 = result.get("image_data")
+        if result.get("success") and img_b64:
+            return Image(data=base64.b64decode(img_b64), format="png")
+    return result

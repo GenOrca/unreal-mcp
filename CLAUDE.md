@@ -109,12 +109,19 @@ def test_my_action(self):
    `tests/run_all.py`.
 3. Add `"<domain>"` to `DOMAINS` in `generate_catalog.py` (the module is derived as
    `UnrealMCPython.<domain>_actions`). The dispatcher auto-registers every catalog
-   domain except `util` — no `dispatcher.py` edit needed.
+   domain except the special-routed ones (`util`, `vision`) — no `dispatcher.py` edit needed.
 4. `uv run python generate_catalog.py`, then run the gates.
 
-Special routing (separate TCP message types, e.g. `execute_python`) lives in the hand-written
-`util` handler in `dispatcher.py` — follow that pattern only if an action is not a plain
-`ue_*` call.
+Special-routed domains have hand-written handlers in `dispatcher.py` (`_SPECIAL_DOMAINS`):
+- **util** — `execute_python` / `livecoding_compile` use dedicated TCP message types.
+- **vision** — `capture_viewport` returns an MCP `Image` (the action sends back base64
+  PNG in `image_data`; the handler decodes it). Viewport capture uses a transient
+  SceneCapture2D → RGBA8 render target → PNG, which works regardless of editor focus
+  (unlike `take_high_res_screenshot`, which only fires when the viewport renders).
+
+Follow these patterns only if an action isn't a plain `ue_*` JSON call. Special-routed
+actions that aren't plain dicts (e.g. vision capture) must be excluded from the E2E
+empty-param sweep (`_EXCLUDE` in test_e2e.py) and the offline routing parametrization.
 
 ## Adding C++ helpers (UFUNCTIONs in MCPythonHelper)
 

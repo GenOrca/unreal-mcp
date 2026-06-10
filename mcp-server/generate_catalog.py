@@ -42,6 +42,7 @@ DOMAINS = [
     "texture",
     "umg",
     "util",
+    "vision",
 ]
 
 # Actions handled by the dispatcher but NOT backed by a ue_* function
