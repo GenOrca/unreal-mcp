@@ -2,6 +2,7 @@
 
 import unreal
 import json
+import os
 import traceback
 
 ASSET_ACTIONS_MODULE = "asset_actions"
@@ -291,5 +292,112 @@ def ue_remove_metadata_tag(asset_path: str = None, tag: str = None) -> str:
         unreal.EditorAssetLibrary.remove_metadata_tag(asset, unreal.Name(tag))
         unreal.EditorAssetLibrary.save_loaded_asset(asset)
         return json.dumps({"success": True, "asset_path": asset_path, "removed_tag": tag})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- File import / export (FBX, textures) --------------------------------------
+# IMPORTANT: imports pin a LEGACY factory (FbxFactory / TextureFactory) on the
+# AssetImportTask. Routing through Interchange (the default when no factory is
+# set) crashes the editor from this TCP-handler context with a TaskGraph
+# RecursionGuard assertion (re-entrant task-graph pumping inside InterchangeEngine).
+
+def ue_import_fbx(file_path: str = None, destination_path: str = None,
+                  destination_name: str = "", as_skeletal: bool = False,
+                  import_materials: bool = False, import_textures: bool = False,
+                  import_animations: bool = False) -> str:
+    """Imports an FBX file as a Static/Skeletal mesh using the legacy FBX importer."""
+    if file_path is None or destination_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: file_path, destination_path."})
+    try:
+        if not os.path.isfile(file_path):
+            return json.dumps({"success": False, "message": f"File not found: {file_path}"})
+        ui = unreal.FbxImportUI()
+        ui.automated_import_should_detect_type = False
+        ui.mesh_type_to_import = (unreal.FBXImportType.FBXIT_SKELETAL_MESH if as_skeletal
+                                  else unreal.FBXImportType.FBXIT_STATIC_MESH)
+        ui.import_mesh = True
+        ui.import_as_skeletal = bool(as_skeletal)
+        ui.import_materials = bool(import_materials)
+        ui.import_textures = bool(import_textures)
+        ui.import_animations = bool(import_animations)
+        task = unreal.AssetImportTask()
+        task.filename = file_path
+        task.destination_path = destination_path
+        if destination_name:
+            task.destination_name = destination_name
+        task.automated = True
+        task.replace_existing = True
+        task.save = True
+        task.options = ui
+        task.factory = unreal.FbxFactory()  # legacy importer — bypass Interchange (crash)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        paths = [str(p).split(".")[0] for p in task.imported_object_paths]
+        if not paths:
+            return json.dumps({"success": False, "message": "Import produced no assets (see Output Log)."})
+        return json.dumps({"success": True, "file_path": file_path, "imported_assets": paths})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_import_texture(file_path: str = None, destination_path: str = None,
+                      destination_name: str = "") -> str:
+    """Imports an image file (PNG/JPG/TGA...) as a Texture2D using the legacy texture importer."""
+    if file_path is None or destination_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: file_path, destination_path."})
+    try:
+        if not os.path.isfile(file_path):
+            return json.dumps({"success": False, "message": f"File not found: {file_path}"})
+        task = unreal.AssetImportTask()
+        task.filename = file_path
+        task.destination_path = destination_path
+        if destination_name:
+            task.destination_name = destination_name
+        task.automated = True
+        task.replace_existing = True
+        task.save = True
+        task.factory = unreal.TextureFactory()  # legacy importer — bypass Interchange (crash)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        paths = [str(p).split(".")[0] for p in task.imported_object_paths]
+        if not paths:
+            return json.dumps({"success": False, "message": "Import produced no assets (see Output Log)."})
+        return json.dumps({"success": True, "file_path": file_path, "imported_assets": paths})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+_FBX_EXPORTERS = {
+    "StaticMesh": "StaticMeshExporterFBX",
+    "SkeletalMesh": "SkeletalMeshExporterFBX",
+    "AnimSequence": "AnimSequenceExporterFBX",
+}
+
+
+def ue_export_fbx(asset_path: str = None, file_path: str = None) -> str:
+    """Exports a StaticMesh, SkeletalMesh, or AnimSequence asset to an FBX file."""
+    if asset_path is None or file_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, file_path."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        cls = asset.get_class().get_name()
+        exporter_name = _FBX_EXPORTERS.get(cls)
+        if not exporter_name:
+            return json.dumps({"success": False,
+                               "message": f"Unsupported asset class '{cls}' for FBX export.",
+                               "supported": list(_FBX_EXPORTERS)})
+        task = unreal.AssetExportTask()
+        task.object = asset
+        task.filename = file_path
+        task.automated = True
+        task.prompt = False
+        task.exporter = getattr(unreal, exporter_name)()
+        task.options = unreal.FbxExportOption()
+        ok = unreal.Exporter.run_asset_export_task(task)
+        if not ok or not os.path.isfile(file_path):
+            return json.dumps({"success": False, "message": "Export failed (see Output Log)."})
+        return json.dumps({"success": True, "asset_path": asset_path, "file_path": file_path,
+                           "file_size": os.path.getsize(file_path)})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

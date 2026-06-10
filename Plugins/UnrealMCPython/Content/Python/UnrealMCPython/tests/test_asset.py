@@ -149,3 +149,67 @@ class TestAssetActions(MCPTestCase):
         finally:
             if unreal.EditorAssetLibrary.does_asset_exist(dst):
                 unreal.EditorAssetLibrary.delete_asset(dst)
+
+    # ── file import / export ─────────────────────────────────────────────────────
+
+    def test_export_import_fbx_roundtrip(self):
+        import unreal, os, tempfile
+        fbx = os.path.join(tempfile.gettempdir(), "mcp_test_roundtrip.fbx")
+        imported = None
+        try:
+            r = self.call("asset_actions", "ue_export_fbx",
+                          asset_path="/Engine/BasicShapes/Cube", file_path=fbx)
+            self.assertSuccess(r)
+            self.assertGreater(r["file_size"], 0)
+            r = self.call("asset_actions", "ue_import_fbx",
+                          file_path=fbx, destination_path="/Game/Tests/MCP",
+                          destination_name="MCP_RoundtripCube")
+            self.assertSuccess(r)
+            imported = r["imported_assets"][0]
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(imported))
+        finally:
+            if imported:
+                self.delete_asset(imported)
+            if os.path.exists(fbx):
+                os.remove(fbx)
+
+    def test_import_texture(self):
+        import unreal, os, tempfile, struct, zlib
+        def png_bytes():
+            w = h = 2
+            raw = b""
+            for _ in range(h):
+                raw += b"\x00" + (b"\xff\x00\x00") * w
+            def chunk(t, d):
+                c = t + d
+                return struct.pack(">I", len(d)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+            return (b"\x89PNG\r\n\x1a\n"
+                    + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                    + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+        p = os.path.join(tempfile.gettempdir(), "mcp_test_tex.png")
+        with open(p, "wb") as f:
+            f.write(png_bytes())
+        imported = None
+        try:
+            r = self.call("asset_actions", "ue_import_texture",
+                          file_path=p, destination_path="/Game/Tests/MCP",
+                          destination_name="MCP_ImportedTex")
+            self.assertSuccess(r)
+            imported = r["imported_assets"][0]
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(imported))
+        finally:
+            if imported:
+                self.delete_asset(imported)
+            os.remove(p)
+
+    def test_export_fbx_unsupported(self):
+        import os, tempfile
+        r = self.call("asset_actions", "ue_export_fbx",
+                      asset_path="/Engine/BasicShapes/BasicShapeMaterial",
+                      file_path=os.path.join(tempfile.gettempdir(), "nope.fbx"))
+        self.assertFalse(r.get("success"))
+
+    def test_import_fbx_missing_file(self):
+        r = self.call("asset_actions", "ue_import_fbx",
+                      file_path="C:/no/such/file.fbx", destination_path="/Game/Tests/MCP")
+        self.assertFalse(r.get("success"))

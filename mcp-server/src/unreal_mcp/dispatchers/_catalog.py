@@ -237,6 +237,10 @@ CATALOG = {
             'params': 'source_path, dest_path',
             'doc': 'Duplicates an asset to a new content-browser path.',
         },
+        'export_fbx': {
+            'params': 'asset_path, file_path',
+            'doc': 'Exports a StaticMesh, SkeletalMesh, or AnimSequence asset to an FBX file.',
+        },
         'find_by_query': {
             'params': 'name, asset_type',
             'doc': "Returns a JSON list of asset paths under '/Game' matching the given query dict.",
@@ -260,6 +264,14 @@ CATALOG = {
         'get_static_mesh_details': {
             'params': 'asset_path',
             'doc': 'Retrieves the bounding box and dimensions of a static mesh asset.',
+        },
+        'import_fbx': {
+            'params': "file_path, destination_path, destination_name='', as_skeletal=False, import_materials=False, import_textures=False, import_animations=False",
+            'doc': 'Imports an FBX file as a Static/Skeletal mesh using the legacy FBX importer.',
+        },
+        'import_texture': {
+            'params': "file_path, destination_path, destination_name=''",
+            'doc': 'Imports an image file (PNG/JPG/TGA...) as a Texture2D using the legacy texture importer.',
         },
         'list_assets': {
             'params': 'directory_path, recursive=True',
