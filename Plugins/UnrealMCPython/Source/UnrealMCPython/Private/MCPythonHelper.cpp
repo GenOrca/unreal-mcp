@@ -2731,3 +2731,28 @@ FString UMCPythonHelper::RemoveSkeletalMeshSocket(USkeletalMesh* Mesh, const FSt
     R->SetStringField(TEXT("message"), FString::Printf(TEXT("Removed socket '%s'."), *SocketName));
     return SerializeJsonObj(R);
 }
+
+// ─── Response transport (python_call) ─────────────────────────────────────────
+
+static TOptional<FString> GMCPythonSubmittedResult;
+
+void UMCPythonHelper::SubmitResult(const FString& ResultJson)
+{
+    GMCPythonSubmittedResult = ResultJson;
+}
+
+bool UMCPythonHelper::ConsumeSubmittedResult(FString& OutResult)
+{
+    if (GMCPythonSubmittedResult.IsSet())
+    {
+        OutResult = MoveTemp(GMCPythonSubmittedResult.GetValue());
+        GMCPythonSubmittedResult.Reset();
+        return true;
+    }
+    return false;
+}
+
+void UMCPythonHelper::ClearSubmittedResult()
+{
+    GMCPythonSubmittedResult.Reset();
+}

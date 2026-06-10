@@ -8,6 +8,7 @@
 #include "IPythonScriptPlugin.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonReader.h"
+#include "MCPythonHelper.h"
 #include "Dom/JsonObject.h"
 #include "ILiveCodingModule.h"
 #include "HAL/FileManager.h"
@@ -235,7 +236,7 @@ void FMCPythonTcpServer::Stop()
 
 bool FMCPythonTcpServer::HandleIncomingConnection(FSocket* ClientSocket, const FIPv4Endpoint& ClientEndpoint)
 {
-    UE_LOG(LogMCPython, Log, TEXT("Incoming connection from %s"), *ClientEndpoint.ToString());
+    UE_LOG(LogMCPython, Verbose, TEXT("Incoming connection from %s"), *ClientEndpoint.ToString());
 
     AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, ClientSocket, ClientEndpoint]() {
         TArray<uint8> ReceivedData;
@@ -333,7 +334,7 @@ void FMCPythonTcpServer::ProcessDataOnGameThread(const FString& Data, FSocket* C
 
                     // Generate a short script to call the execute_action function from the mcp_unreal_actions module
                     // The first argument is the target module name, the second is the target function name, and the third is the argument dictionary.
-                    CodeField = FString::Printf(TEXT("from UnrealMCPython import mcp_unreal_actions;print(mcp_unreal_actions.execute_action(\'%s\', \'%s\', %s));"), // Removed [] around %s
+                    CodeField = FString::Printf(TEXT("import unreal;from UnrealMCPython import mcp_unreal_actions;unreal.MCPythonHelper.submit_result(mcp_unreal_actions.execute_action(\'%s\', \'%s\', %s));"), // result handed back via SubmitResult, NOT print (print echoed every response into the Output Log)
                                                 *ModuleName, 
                                                 *FunctionName, 
                                                 *PyArgsStringForCall); 
@@ -360,6 +361,7 @@ void FMCPythonTcpServer::ProcessDataOnGameThread(const FString& Data, FSocket* C
 
             if (IPythonScriptPlugin::Get())
             {
+                UMCPythonHelper::ClearSubmittedResult();
                 LogCapture.Clear();
                 GLog->AddOutputDevice(&LogCapture);
                 
@@ -371,7 +373,14 @@ void FMCPythonTcpServer::ProcessDataOnGameThread(const FString& Data, FSocket* C
                 
                 GLog->RemoveOutputDevice(&LogCapture);
 
-                FString CapturedLogs = LogCapture.GetLogs().TrimStartAndEnd();
+                // Prefer the directly-submitted result (clean transport, nothing
+                // echoed to the log). Fall back to the print/log capture for code
+                // paths that still print (error stubs, legacy).
+                FString CapturedLogs;
+                if (!UMCPythonHelper::ConsumeSubmittedResult(CapturedLogs))
+                {
+                    CapturedLogs = LogCapture.GetLogs().TrimStartAndEnd();
+                }
 
                 bool bIsJson = false;
                 if (CapturedLogs.StartsWith(TEXT("{")) || CapturedLogs.StartsWith(TEXT("["))) {

@@ -281,4 +281,27 @@ public:
     /** Remove a named socket from a SkeletalMesh. Returns JSON. */
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString RemoveSkeletalMeshSocket(USkeletalMesh* Mesh, const FString& SocketName);
+
+    // ─── Response transport (python_call) ─────────────────────────────────────
+    // The python_call path used to transport results via print() + a GLog capture
+    // device. Because the capture device only ADDS to GLog routing, every response
+    // was also echoed into the Output Log / log file — including megabyte base64
+    // payloads from vision captures, and get_output_log responses re-echoing
+    // themselves into ever-deeper escaping. submit_result hands the JSON straight
+    // to the server instead, so responses never touch the log.
+    //
+    // Thread-safety: a single static slot is sufficient because each request is one
+    // game-thread task — the write (last python statement) and the read (right
+    // after ExecPythonCommandEx returns) are adjacent within that task, and any
+    // re-entrant nested request completes atomically in between, never partially.
+
+    /** Called by generated python_call code to hand the action's JSON result back. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static void SubmitResult(const FString& ResultJson);
+
+    /** C++ side: move the submitted result out (returns false if nothing was submitted). */
+    static bool ConsumeSubmittedResult(FString& OutResult);
+
+    /** C++ side: drop any stale submitted result before executing a call. */
+    static void ClearSubmittedResult();
 };
