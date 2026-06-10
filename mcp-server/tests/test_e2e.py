@@ -141,6 +141,8 @@ def test_every_action_round_trips(domain, action):
     """
     if domain == "util":
         r = run(disp.util.fn(action=action, params={}))
+    elif domain == "vision":
+        r = run(disp.vision.fn(action=action, params={}))
     else:
         r = run(disp._dispatch(domain, action, {}))
     assert isinstance(r, dict), f"{domain}.{action} returned non-dict: {r!r}"

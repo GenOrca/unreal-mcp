@@ -801,6 +801,14 @@ CATALOG = {
         },
     },
     'vision': {
+        'capture_actors': {
+            'params': 'actor_labels, width=1280, height=720, fov=60.0, padding=1.6',
+            'doc': 'Frames the given actors (by label) from an elevated 3/4 view and captures them as a PNG.',
+        },
+        'capture_from': {
+            'params': 'location, rotation, width=1280, height=720, fov=90.0',
+            'doc': 'Captures the scene from an explicit camera pose. location=[x,y,z], rotation=[pitch,yaw,roll].',
+        },
         'capture_viewport': {
             'params': 'width=1280, height=720, fov=90.0',
             'doc': "Captures the active level viewport (3D scene only) as a PNG, returned base64 in 'image_data'.",
