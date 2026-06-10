@@ -545,6 +545,14 @@ CATALOG = {
         },
     },
     'level_sequence': {
+        'add_anim_track': {
+            'params': 'asset_path, binding_name, anim_path, start_seconds, end_seconds',
+            'doc': 'Adds a skeletal-animation track playing anim_path on a binding (defaults to the playback range).',
+        },
+        'add_camera': {
+            'params': 'asset_path, spawnable=True',
+            'doc': 'Adds a CineCamera to a Level Sequence with a Camera Cut track bound to it (official create_camera path).',
+        },
         'add_possessable': {
             'params': 'asset_path, actor_label',
             'doc': 'Adds a possessable binding for an existing level actor (by World Outliner label). Returns the binding name.',
@@ -561,6 +569,14 @@ CATALOG = {
             'params': 'asset_path, binding_name',
             'doc': 'Adds a 3D transform track (with one section) to a binding.',
         },
+        'close_sequencer': {
+            'params': '',
+            'doc': 'Closes the Sequencer editor if one is open.',
+        },
+        'convert_binding': {
+            'params': "asset_path, binding_name, to='spawnable'",
+            'doc': "Converts a binding between possessable and spawnable. to='spawnable' or 'possessable'.",
+        },
         'create_level_sequence': {
             'params': 'asset_path, fps=30.0, duration_seconds=5.0',
             'doc': 'Creates a Level Sequence asset with the given frame rate and playback duration.',
@@ -568,6 +584,10 @@ CATALOG = {
         'get_sequence_info': {
             'params': 'asset_path',
             'doc': 'Returns frame rate, playback range (seconds), and the bindings of a Level Sequence.',
+        },
+        'open_in_sequencer': {
+            'params': 'asset_path',
+            'doc': 'Opens a Level Sequence in the Sequencer editor (and focuses it).',
         },
         'remove_binding': {
             'params': 'asset_path, binding_name',

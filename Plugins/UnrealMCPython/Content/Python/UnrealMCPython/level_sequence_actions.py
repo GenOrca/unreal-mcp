@@ -283,3 +283,117 @@ def ue_add_transform_keyframe(asset_path: str = None, binding_name: str = None, 
                            "section_range_seconds": section_range})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Sequencer editor (camera, anim tracks, open/close) ------------------------
+
+def ue_open_in_sequencer(asset_path: str = None) -> str:
+    """Opens a Level Sequence in the Sequencer editor (and focuses it)."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        with _suppress():
+            seq = _load_sequence(asset_path)
+            ok = unreal.LevelSequenceEditorBlueprintLibrary.open_level_sequence(seq)
+        return json.dumps({"success": bool(ok), "asset_path": asset_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_close_sequencer() -> str:
+    """Closes the Sequencer editor if one is open."""
+    try:
+        unreal.LevelSequenceEditorBlueprintLibrary.close_level_sequence()
+        return json.dumps({"success": True})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_add_camera(asset_path: str = None, spawnable: bool = True) -> str:
+    """Adds a CineCamera to a Level Sequence with a Camera Cut track bound to it (official create_camera path)."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        with _suppress():
+            seq = _load_sequence(asset_path)
+            lsb = unreal.LevelSequenceEditorBlueprintLibrary
+            if not lsb.open_level_sequence(seq):
+                return json.dumps({"success": False, "message": "Could not open the sequence in Sequencer (create_camera requires a focused sequence)."})
+            try:
+                sub = unreal.get_editor_subsystem(unreal.LevelSequenceEditorSubsystem)
+                binding, _cam_actor = sub.create_camera(spawnable=bool(spawnable))
+                binding_name = binding.get_name()
+                # Make sure the camera-cut section spans the playback range.
+                start = seq.get_playback_start_seconds()
+                end = seq.get_playback_end_seconds()
+                for track in seq.get_tracks():
+                    if isinstance(track, unreal.MovieSceneCameraCutTrack):
+                        for sec in track.get_sections():
+                            sec.set_range_seconds(start, end)
+                unreal.EditorAssetLibrary.save_loaded_asset(seq)
+            finally:
+                lsb.close_level_sequence()
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "camera_binding": binding_name, "camera_cut_track": True,
+                           "spawnable": bool(spawnable)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_add_anim_track(asset_path: str = None, binding_name: str = None, anim_path: str = None,
+                      start_seconds: float = None, end_seconds: float = None) -> str:
+    """Adds a skeletal-animation track playing anim_path on a binding (defaults to the playback range)."""
+    if asset_path is None or binding_name is None or anim_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, binding_name, anim_path."})
+    try:
+        with _suppress():
+            seq = _load_sequence(asset_path)
+            binding = _find_binding(seq, binding_name)
+            anim = unreal.EditorAssetLibrary.load_asset(anim_path)
+            if not anim or not isinstance(anim, unreal.AnimSequenceBase):
+                return json.dumps({"success": False, "message": f"Not an animation asset: {anim_path}"})
+            track = binding.add_track(unreal.MovieSceneSkeletalAnimationTrack)
+            sec = track.add_section()
+            s = seq.get_playback_start_seconds() if start_seconds is None else float(start_seconds)
+            e = seq.get_playback_end_seconds() if end_seconds is None else float(end_seconds)
+            sec.set_range_seconds(s, e)
+            params = sec.get_editor_property("params")
+            params.set_editor_property("animation", anim)
+            sec.set_editor_property("params", params)
+            unreal.EditorAssetLibrary.save_loaded_asset(seq)
+        return json.dumps({"success": True, "asset_path": asset_path, "binding_name": binding_name,
+                           "anim_path": anim_path, "range_seconds": [round(s, 3), round(e, 3)]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_convert_binding(asset_path: str = None, binding_name: str = None, to: str = "spawnable") -> str:
+    """Converts a binding between possessable and spawnable. to='spawnable' or 'possessable'."""
+    if asset_path is None or binding_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, binding_name."})
+    mode = (to or "").lower()
+    if mode not in ("spawnable", "possessable"):
+        return json.dumps({"success": False, "message": "Parameter 'to' must be 'spawnable' or 'possessable'."})
+    try:
+        with _suppress():
+            seq = _load_sequence(asset_path)
+            binding = _find_binding(seq, binding_name)
+            lsb = unreal.LevelSequenceEditorBlueprintLibrary
+            if not lsb.open_level_sequence(seq):
+                return json.dumps({"success": False, "message": "Could not open the sequence in Sequencer (conversion requires a focused sequence)."})
+            try:
+                sub = unreal.get_editor_subsystem(unreal.LevelSequenceEditorSubsystem)
+                if mode == "spawnable":
+                    result = sub.convert_to_spawnable(binding)
+                    names = [b.get_name() for b in (result or [])]
+                else:
+                    result = sub.convert_to_possessable(binding)
+                    names = [result.get_name()] if result else []
+                unreal.EditorAssetLibrary.save_loaded_asset(seq)
+            finally:
+                lsb.close_level_sequence()
+        if not names:
+            return json.dumps({"success": False, "message": f"Conversion to {mode} returned no binding."})
+        return json.dumps({"success": True, "asset_path": asset_path, "converted_to": mode, "bindings": names})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
