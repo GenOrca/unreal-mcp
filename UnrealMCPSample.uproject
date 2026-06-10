@@ -11,6 +11,10 @@
 		{
 			"Name": "UnrealMCPython",
 			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
 		}
 	]
 }

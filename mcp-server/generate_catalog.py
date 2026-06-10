@@ -35,6 +35,7 @@ DOMAINS = [
     "data_table",
     "editor",
     "game",
+    "gas",
     "layer",
     "level",
     "level_sequence",

@@ -538,6 +538,52 @@ CATALOG = {
             'doc': "Sets the GameMode Override on the current level's World Settings.",
         },
     },
+    'gas': {
+        'add_effect_modifier': {
+            'params': "asset_path, attribute_set_path, attribute_name, op='add_base', magnitude=1.0",
+            'doc': 'Appends an attribute modifier (e.g. Health add_base +25) to a GameplayEffect. attribute_set_path is the AttributeSet class path (requires the GameplayAbilities plugin).',
+        },
+        'add_gameplay_tag': {
+            'params': "tag, comment=''",
+            'doc': 'Registers a gameplay tag in Config/DefaultGameplayTags.ini — takes effect after an editor restart (requires the GameplayAbilities plugin).',
+        },
+        'clear_effect_modifiers': {
+            'params': 'asset_path',
+            'doc': 'Removes all modifiers from a GameplayEffect blueprint (requires the GameplayAbilities plugin).',
+        },
+        'create_ability_blueprint': {
+            'params': 'asset_path, parent_class_path',
+            'doc': 'Creates a GameplayAbility blueprint; parent_class_path may point at a custom GA subclass (requires the GameplayAbilities plugin).',
+        },
+        'create_effect_blueprint': {
+            'params': "asset_path, duration_policy='instant', duration_seconds",
+            'doc': 'Creates a GameplayEffect blueprint with a duration policy: instant, has_duration (+seconds), or infinite (requires the GameplayAbilities plugin).',
+        },
+        'get_ability_info': {
+            'params': 'asset_path',
+            'doc': 'Returns parent class, ability tags, and cost/cooldown effect classes of a GameplayAbility blueprint (requires the GameplayAbilities plugin).',
+        },
+        'get_effect_info': {
+            'params': 'asset_path',
+            'doc': 'Returns duration policy/seconds and decoded modifiers of a GameplayEffect blueprint (requires the GameplayAbilities plugin).',
+        },
+        'list_gameplay_tags': {
+            'params': "prefix=''",
+            'doc': 'Lists gameplay tags registered in Config/DefaultGameplayTags.ini, optionally filtered by prefix (requires the GameplayAbilities plugin).',
+        },
+        'set_ability_costs': {
+            'params': 'asset_path, cost_effect_path, cooldown_effect_path',
+            'doc': 'Wires cost and/or cooldown GameplayEffect blueprints onto a GameplayAbility (requires the GameplayAbilities plugin).',
+        },
+        'set_ability_tags': {
+            'params': 'asset_path, tags',
+            'doc': 'Sets the AbilityTags container on a GameplayAbility; unregistered tags are reported, not silently dropped (requires the GameplayAbilities plugin).',
+        },
+        'set_effect_duration': {
+            'params': 'asset_path, duration_policy, duration_seconds',
+            'doc': "Changes a GameplayEffect's duration policy (instant / has_duration+seconds / infinite) (requires the GameplayAbilities plugin).",
+        },
+    },
     'layer': {
         'add_actor_to_layer': {
             'params': 'actor_label, layer_name',
