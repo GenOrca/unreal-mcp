@@ -240,15 +240,40 @@ bool FMCPythonTcpServer::HandleIncomingConnection(FSocket* ClientSocket, const F
     AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, ClientSocket, ClientEndpoint]() {
         TArray<uint8> ReceivedData;
 
+        // Wait (bounded) for the client to actually send something. Liveness
+        // probes connect and close without sending a byte — the old
+        // `while (HasPendingData || ReceivedData.IsEmpty())` loop hot-spun a
+        // background worker forever per such connection, eventually starving
+        // the AnyBackgroundThread pool and freezing ALL request processing
+        // (connections still got accepted/logged by the listener thread, but
+        // nothing was ever handled).
+        if (!ClientSocket->Wait(ESocketWaitConditions::WaitForRead, FTimespan::FromSeconds(5)))
+        {
+            ClientSocket->Close();
+            ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(ClientSocket);
+            return;
+        }
+
         uint32 DataSize = 0;
-        while (ClientSocket->HasPendingData(DataSize) || ReceivedData.IsEmpty())
+        while (ClientSocket->HasPendingData(DataSize))
         {
             TArray<uint8> Buffer;
             Buffer.SetNumZeroed(DataSize);
             int32 BytesRead = 0;
-            ClientSocket->Recv(Buffer.GetData(), Buffer.Num(), BytesRead);
+            if (!ClientSocket->Recv(Buffer.GetData(), Buffer.Num(), BytesRead) || BytesRead <= 0)
+            {
+                break;
+            }
             Buffer.SetNum(BytesRead);
             ReceivedData.Append(Buffer);
+        }
+
+        // Connect-and-close probe (or peer reset): nothing to process.
+        if (ReceivedData.IsEmpty())
+        {
+            ClientSocket->Close();
+            ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(ClientSocket);
+            return;
         }
         ReceivedData.Add(NULL);
 
