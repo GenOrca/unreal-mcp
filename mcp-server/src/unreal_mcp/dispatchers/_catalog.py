@@ -669,6 +669,10 @@ CATALOG = {
             'params': 'asset_path',
             'doc': 'Returns collision complexity and simple/convex collision counts of a StaticMesh.',
         },
+        'get_lod_screen_sizes': {
+            'params': 'asset_path',
+            'doc': 'Returns the screen-size threshold of each LOD on a StaticMesh.',
+        },
         'get_static_mesh_info': {
             'params': 'asset_path',
             'doc': 'Returns LOD/section/triangle/vertex/material counts and Nanite state of a StaticMesh.',
@@ -676,6 +680,30 @@ CATALOG = {
         'list_static_mesh_materials': {
             'params': 'asset_path',
             'doc': 'Lists the material slots of a StaticMesh (slot index + material path).',
+        },
+        'remove_collisions': {
+            'params': 'asset_path',
+            'doc': 'Removes all simple/convex collision from a StaticMesh.',
+        },
+        'remove_lods': {
+            'params': 'asset_path',
+            'doc': 'Removes all LODs except LOD 0 from a StaticMesh.',
+        },
+        'set_convex_collision': {
+            'params': 'asset_path, hull_count=4, max_hull_verts=16, hull_precision=100000',
+            'doc': 'Replaces simple collision with auto-generated convex decomposition collision.',
+        },
+        'set_lod_for_collision': {
+            'params': 'asset_path, lod_index',
+            'doc': "Sets which LOD's geometry is used for complex collision on a StaticMesh.",
+        },
+        'set_lod_from_static_mesh': {
+            'params': 'asset_path, lod_index, source_path, source_lod_index=0, reuse_existing_material_slots=True',
+            'doc': "Adds/sets a LOD on a StaticMesh using geometry from another StaticMesh's LOD.",
+        },
+        'set_lods': {
+            'params': 'asset_path, lod_settings, auto_compute_screen_size=False',
+            'doc': 'Generates LODs from reduction settings: lod_settings=[{percent_triangles, screen_size}, ...] (LOD0 first).',
         },
         'set_static_mesh_material': {
             'params': 'asset_path, slot_index, material_path',

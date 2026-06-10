@@ -60,3 +60,71 @@ class TestStaticMeshActions(MCPTestCase):
         r = self.call("static_mesh_actions", "ue_add_simple_collision",
                       asset_path=_SRC, shape="NOTASHAPE")
         self.assertFalse(r.get("success"))
+
+    # ── LODs ─────────────────────────────────────────────────────────────────────
+
+    def _dup_mesh(self, name):
+        self.ensure_test_dir()
+        dst = f"{TEST_ROOT}/{name}"
+        self.delete_asset(dst)
+        unreal.EditorAssetLibrary.duplicate_asset(_SRC, dst)
+        return dst
+
+    def test_set_and_remove_lods(self):
+        dst = self._dup_mesh("MCP_SMLod")
+        try:
+            r = self.call("static_mesh_actions", "ue_set_lods", asset_path=dst,
+                          lod_settings=[{"percent_triangles": 1.0, "screen_size": 1.0},
+                                        {"percent_triangles": 0.5, "screen_size": 0.5}])
+            self.assertSuccess(r)
+            self.assertEqual(r["lod_count"], 2)
+            r = self.call("static_mesh_actions", "ue_get_lod_screen_sizes", asset_path=dst)
+            self.assertSuccess(r)
+            self.assertEqual(len(r["screen_sizes"]), 2)
+            r = self.call("static_mesh_actions", "ue_remove_lods", asset_path=dst)
+            self.assertSuccess(r)
+            self.assertEqual(r["lod_count"], 1)
+        finally:
+            self.delete_asset(dst)
+
+    def test_set_lods_missing(self):
+        r = self.call("static_mesh_actions", "ue_set_lods", asset_path=_SRC)
+        self.assertFalse(r.get("success"))
+
+    def test_set_lod_from_static_mesh(self):
+        dst = self._dup_mesh("MCP_SMLodCopy")
+        try:
+            r = self.call("static_mesh_actions", "ue_set_lod_from_static_mesh",
+                          asset_path=dst, lod_index=1,
+                          source_path="/Engine/BasicShapes/Sphere", source_lod_index=0)
+            self.assertSuccess(r)
+            self.assertEqual(r["lod_count"], 2)
+        finally:
+            self.delete_asset(dst)
+
+    # ── convex / collision management ───────────────────────────────────────────
+
+    def test_convex_and_remove_collisions(self):
+        dst = self._dup_mesh("MCP_SMConvex")
+        try:
+            r = self.call("static_mesh_actions", "ue_set_convex_collision",
+                          asset_path=dst, hull_count=2, max_hull_verts=16, hull_precision=100000)
+            self.assertSuccess(r)
+            self.assertGreaterEqual(r["convex_collision_count"], 1)
+            r = self.call("static_mesh_actions", "ue_remove_collisions", asset_path=dst)
+            self.assertSuccess(r)
+            self.assertEqual(r["convex_collision_count"], 0)
+        finally:
+            self.delete_asset(dst)
+
+    def test_set_lod_for_collision(self):
+        dst = self._dup_mesh("MCP_SMLodCol")
+        try:
+            r = self.call("static_mesh_actions", "ue_set_lod_for_collision",
+                          asset_path=dst, lod_index=0)
+            self.assertSuccess(r)
+            r = self.call("static_mesh_actions", "ue_set_lod_for_collision",
+                          asset_path=dst, lod_index=99)
+            self.assertFalse(r.get("success"))
+        finally:
+            self.delete_asset(dst)

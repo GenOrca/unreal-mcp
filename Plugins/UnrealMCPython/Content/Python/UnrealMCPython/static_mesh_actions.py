@@ -121,3 +121,130 @@ def ue_add_simple_collision(asset_path: str = None, shape: str = "BOX") -> str:
                            "simple_collision_count": after, "added": after - before})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- LODs -----------------------------------------------------------------
+
+def ue_set_lods(asset_path: str = None, lod_settings: list = None,
+                auto_compute_screen_size: bool = False) -> str:
+    """Generates LODs from reduction settings: lod_settings=[{percent_triangles, screen_size}, ...] (LOD0 first)."""
+    if asset_path is None or not lod_settings:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, lod_settings (non-empty list)."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        opts = unreal.StaticMeshReductionOptions()
+        settings = []
+        for i, ls in enumerate(lod_settings):
+            s = unreal.StaticMeshReductionSettings()
+            s.percent_triangles = float(ls.get("percent_triangles", 1.0))
+            s.screen_size = float(ls.get("screen_size", 1.0))
+            settings.append(s)
+        opts.reduction_settings = settings
+        opts.auto_compute_lod_screen_size = bool(auto_compute_screen_size)
+        count = SMS.set_lods(sm, opts)
+        if count <= 0:
+            return json.dumps({"success": False, "message": f"set_lods returned {count}."})
+        unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return json.dumps({"success": True, "asset_path": asset_path, "lod_count": SMS.get_lod_count(sm),
+                           "screen_sizes": [round(x, 4) for x in SMS.get_lod_screen_sizes(sm)]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_lod_screen_sizes(asset_path: str = None) -> str:
+    """Returns the screen-size threshold of each LOD on a StaticMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "lod_count": SMS.get_lod_count(sm),
+                           "screen_sizes": [round(x, 4) for x in SMS.get_lod_screen_sizes(sm)]})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_remove_lods(asset_path: str = None) -> str:
+    """Removes all LODs except LOD 0 from a StaticMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        ok = SMS.remove_lods(sm)
+        if not ok:
+            return json.dumps({"success": False, "message": "remove_lods returned False (mesh may only have LOD 0)."})
+        unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return json.dumps({"success": True, "asset_path": asset_path, "lod_count": SMS.get_lod_count(sm)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_lod_from_static_mesh(asset_path: str = None, lod_index: int = None,
+                                source_path: str = None, source_lod_index: int = 0,
+                                reuse_existing_material_slots: bool = True) -> str:
+    """Adds/sets a LOD on a StaticMesh using geometry from another StaticMesh's LOD."""
+    if asset_path is None or lod_index is None or source_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, lod_index, source_path."})
+    try:
+        dst = _load_static_mesh(asset_path)
+        src = _load_static_mesh(source_path)
+        result = SMS.set_lod_from_static_mesh(dst, int(lod_index), src, int(source_lod_index),
+                                              bool(reuse_existing_material_slots))
+        if result < 0:
+            return json.dumps({"success": False, "message": f"set_lod_from_static_mesh returned {result} (see Output Log)."})
+        unreal.EditorAssetLibrary.save_loaded_asset(dst)
+        return json.dumps({"success": True, "asset_path": asset_path, "lod_set_at": result,
+                           "lod_count": SMS.get_lod_count(dst)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# --- Collision (continued) --------------------------------------------------
+
+def ue_set_convex_collision(asset_path: str = None, hull_count: int = 4,
+                            max_hull_verts: int = 16, hull_precision: int = 100000) -> str:
+    """Replaces simple collision with auto-generated convex decomposition collision."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        ok = SMS.set_convex_decomposition_collisions(sm, int(hull_count), int(max_hull_verts), int(hull_precision))
+        if not ok:
+            return json.dumps({"success": False, "message": "set_convex_decomposition_collisions returned False."})
+        unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "convex_collision_count": SMS.get_convex_collision_count(sm)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_remove_collisions(asset_path: str = None) -> str:
+    """Removes all simple/convex collision from a StaticMesh."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        ok = SMS.remove_collisions(sm)
+        if not ok:
+            return json.dumps({"success": False, "message": "remove_collisions returned False."})
+        unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return json.dumps({"success": True, "asset_path": asset_path,
+                           "simple_collision_count": SMS.get_simple_collision_count(sm),
+                           "convex_collision_count": SMS.get_convex_collision_count(sm)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_set_lod_for_collision(asset_path: str = None, lod_index: int = None) -> str:
+    """Sets which LOD's geometry is used for complex collision on a StaticMesh."""
+    if asset_path is None or lod_index is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, lod_index."})
+    try:
+        sm = _load_static_mesh(asset_path)
+        if int(lod_index) < 0 or int(lod_index) >= SMS.get_lod_count(sm):
+            return json.dumps({"success": False, "message": f"lod_index {lod_index} out of range (0..{SMS.get_lod_count(sm)-1})."})
+        sm.set_editor_property("lod_for_collision", int(lod_index))
+        unreal.EditorAssetLibrary.save_loaded_asset(sm)
+        return json.dumps({"success": True, "asset_path": asset_path, "lod_for_collision": int(lod_index)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
