@@ -32,6 +32,7 @@ _MODULES = [
     "UnrealMCPython.tests.test_layer",
     "UnrealMCPython.tests.test_texture",
     "UnrealMCPython.tests.test_retarget",
+    "UnrealMCPython.tests.test_control_rig",
     "UnrealMCPython.tests.test_vision",
 ]
 

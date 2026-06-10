@@ -414,6 +414,32 @@ CATALOG = {
             'doc': "Sets a Blueprint variable's 'Instance Editable' and/or 'Expose On Spawn' flags.",
         },
     },
+    'control_rig': {
+        'add_rig_bone': {
+            'params': "asset_path, bone_name, parent_name='', parent_type='bone', location",
+            'doc': 'Adds a bone to a Control Rig hierarchy under an optional parent (requires the ControlRig plugin).',
+        },
+        'add_rig_null': {
+            'params': "asset_path, null_name, parent_name='', parent_type='bone', location",
+            'doc': 'Adds a null (group transform) to a Control Rig hierarchy (requires the ControlRig plugin).',
+        },
+        'add_unit_node': {
+            'params': "asset_path, struct_path, method='Execute', pos_x=0.0, pos_y=0.0",
+            'doc': "Adds a RigVM unit node by struct path (e.g. '/Script/ControlRig.RigUnit_GetTransform') to a Control Rig graph (requires the ControlRig plugin).",
+        },
+        'create_control_rig': {
+            'params': 'asset_path, skeletal_mesh_path',
+            'doc': 'Creates a Control Rig at asset_path; with a skeletal mesh, imports its bones and sets it as preview (requires the ControlRig plugin).',
+        },
+        'get_control_rig_info': {
+            'params': 'asset_path',
+            'doc': 'Returns element counts by type and the preview mesh of a Control Rig (requires the ControlRig plugin).',
+        },
+        'recompile_control_rig': {
+            'params': 'asset_path',
+            'doc': "Recompiles a Control Rig's VM and saves it (requires the ControlRig plugin).",
+        },
+    },
     'data_table': {
         'create_data_table': {
             'params': 'asset_path, row_struct_path',
