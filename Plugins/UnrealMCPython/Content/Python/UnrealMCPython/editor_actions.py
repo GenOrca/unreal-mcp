@@ -574,3 +574,90 @@ def ue_replace_selected_with_bp(blueprint_asset_path: str) -> str:
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+# --- Actor merging / proxy geometry --------------------------------------------
+
+def _actors_by_labels(labels):
+    sub = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    by_label = {a.get_actor_label(): a for a in sub.get_all_level_actors()}
+    found, missing = [], []
+    for l in labels:
+        (found.append(by_label[l]) if l in by_label else missing.append(l))
+    return found, missing
+
+
+def _merged_mesh_path(actor):
+    try:
+        mesh = actor.static_mesh_component.static_mesh
+        return mesh.get_path_name().split(".")[0] if mesh else None
+    except Exception:
+        return None
+
+
+def ue_merge_actors(actor_labels: list = None, base_package_name: str = None,
+                    destroy_source_actors: bool = False) -> str:
+    """Merges static mesh actors into ONE new static mesh asset + actor (geometry is baked together)."""
+    if not actor_labels or base_package_name is None:
+        return json.dumps({"success": False, "message": "Required: actor_labels (non-empty), base_package_name."})
+    try:
+        actors, missing = _actors_by_labels(actor_labels)
+        if missing:
+            return json.dumps({"success": False, "message": f"Actors not found: {missing}"})
+        sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        opts = unreal.EditorScriptingMergeStaticMeshActorsOptions()
+        opts.base_package_name = base_package_name
+        opts.destroy_source_actors = bool(destroy_source_actors)
+        merged = sms.merge_static_mesh_actors(actors, opts)
+        if not merged:
+            return json.dumps({"success": False, "message": "merge_static_mesh_actors returned None (are these StaticMesh actors?)."})
+        return json.dumps({"success": True, "merged_actor": merged.get_actor_label(),
+                           "mesh_asset": _merged_mesh_path(merged),
+                           "source_destroyed": bool(destroy_source_actors)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_join_actors(actor_labels: list = None, new_actor_label: str = "") -> str:
+    """Joins static mesh actors into one actor with multiple components (no new mesh asset is baked)."""
+    if not actor_labels:
+        return json.dumps({"success": False, "message": "Required parameter 'actor_labels' is missing."})
+    try:
+        actors, missing = _actors_by_labels(actor_labels)
+        if missing:
+            return json.dumps({"success": False, "message": f"Actors not found: {missing}"})
+        sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        opts = unreal.EditorScriptingJoinStaticMeshActorsOptions()
+        if new_actor_label:
+            opts.new_actor_label = new_actor_label
+        joined = sms.join_static_mesh_actors(actors, opts)
+        if not joined:
+            return json.dumps({"success": False, "message": "join_static_mesh_actors returned None."})
+        return json.dumps({"success": True, "joined_actor": joined.get_actor_label()})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_create_proxy_actor(actor_labels: list = None, base_package_name: str = None,
+                          screen_size: int = 300, destroy_source_actors: bool = False) -> str:
+    """Bakes static mesh actors into ONE simplified proxy mesh (Proxy Geometry tool) and spawns it."""
+    if not actor_labels or base_package_name is None:
+        return json.dumps({"success": False, "message": "Required: actor_labels (non-empty), base_package_name."})
+    try:
+        actors, missing = _actors_by_labels(actor_labels)
+        if missing:
+            return json.dumps({"success": False, "message": f"Actors not found: {missing}"})
+        sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        opts = unreal.EditorScriptingCreateProxyMeshActorOptions()
+        opts.base_package_name = base_package_name
+        opts.destroy_source_actors = bool(destroy_source_actors)
+        settings = opts.mesh_proxy_settings
+        settings.set_editor_property("screen_size", int(screen_size))
+        opts.mesh_proxy_settings = settings
+        proxy = sms.create_proxy_mesh_actor(actors, opts)
+        if not proxy:
+            return json.dumps({"success": False, "message": "create_proxy_mesh_actor returned None (ProxyLOD plugin enabled? StaticMesh actors?)."})
+        return json.dumps({"success": True, "proxy_actor": proxy.get_actor_label(),
+                           "mesh_asset": _merged_mesh_path(proxy),
+                           "source_destroyed": bool(destroy_source_actors)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

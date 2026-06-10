@@ -90,3 +90,71 @@ class TestEditorActions(MCPTestCase):
         r = self.call("editor_actions", "ue_replace_selected_with_bp",
                       blueprint_asset_path="/Game/DoesNotExist/BP_Nope")
         self.assertFalse(r.get("success"))
+
+    # ── merge / join / proxy ─────────────────────────────────────────────────────
+
+    def _spawn_cubes(self, n=2):
+        labels = []
+        for i in range(n):
+            r = self.call("actor_actions", "ue_spawn_from_object",
+                          asset_path="/Engine/BasicShapes/Cube", location=[i * 150, 0, 2200])
+            self.assertSuccess(r)
+            labels.append(r["actor_label"])
+        return labels
+
+    def test_merge_actors(self):
+        import unreal
+        labels = self._spawn_cubes()
+        merged_actor = None
+        mesh_asset = None
+        try:
+            r = self.call("editor_actions", "ue_merge_actors",
+                          actor_labels=labels,
+                          base_package_name="/Game/Tests/MCP/MCP_Merged")
+            self.assertSuccess(r)
+            merged_actor = r["merged_actor"]
+            mesh_asset = r["mesh_asset"]
+            self.assertIsNotNone(mesh_asset)
+            self.assertTrue(unreal.EditorAssetLibrary.does_asset_exist(mesh_asset))
+        finally:
+            for l in labels + ([merged_actor] if merged_actor else []):
+                self.delete_actor_by_label(l)
+            if mesh_asset:
+                self.delete_asset(mesh_asset)
+
+    def test_join_actors(self):
+        labels = self._spawn_cubes()
+        joined = None
+        try:
+            r = self.call("editor_actions", "ue_join_actors",
+                          actor_labels=labels, new_actor_label="MCP_Joined")
+            self.assertSuccess(r)
+            joined = r["joined_actor"]
+        finally:
+            for l in labels + ([joined] if joined else []):
+                self.delete_actor_by_label(l)
+
+    def test_create_proxy_actor(self):
+        import unreal
+        labels = self._spawn_cubes()
+        proxy = None
+        mesh_asset = None
+        try:
+            r = self.call("editor_actions", "ue_create_proxy_actor",
+                          actor_labels=labels,
+                          base_package_name="/Game/Tests/MCP/MCP_Proxy",
+                          screen_size=300)
+            self.assertSuccess(r)
+            proxy = r["proxy_actor"]
+            mesh_asset = r["mesh_asset"]
+        finally:
+            for l in labels + ([proxy] if proxy else []):
+                self.delete_actor_by_label(l)
+            if mesh_asset:
+                self.delete_asset(mesh_asset)
+
+    def test_merge_actors_missing(self):
+        r = self.call("editor_actions", "ue_merge_actors",
+                      actor_labels=["NoSuchActor_XYZ"],
+                      base_package_name="/Game/Tests/MCP/Nope")
+        self.assertFalse(r.get("success"))

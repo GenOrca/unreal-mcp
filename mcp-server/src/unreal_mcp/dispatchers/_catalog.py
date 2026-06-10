@@ -475,9 +475,21 @@ CATALOG = {
         },
     },
     'editor': {
+        'create_proxy_actor': {
+            'params': 'actor_labels, base_package_name, screen_size=300, destroy_source_actors=False',
+            'doc': 'Bakes static mesh actors into ONE simplified proxy mesh (Proxy Geometry tool) and spawns it.',
+        },
         'get_selected_assets': {
             'params': '',
             'doc': 'Gets the set of currently selected assets.',
+        },
+        'join_actors': {
+            'params': "actor_labels, new_actor_label=''",
+            'doc': 'Joins static mesh actors into one actor with multiple components (no new mesh asset is baked).',
+        },
+        'merge_actors': {
+            'params': 'actor_labels, base_package_name, destroy_source_actors=False',
+            'doc': 'Merges static mesh actors into ONE new static mesh asset + actor (geometry is baked together).',
         },
         'replace_mesh_on_selected': {
             'params': 'mesh_to_be_replaced_path, new_mesh_path',
