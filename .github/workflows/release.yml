@@ -102,6 +102,30 @@ jobs:
           (cd "$STAGE_DIR" && zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" UnrealMCPython)
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
 
+      - name: Build release notes
+        id: notes
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+          REPO="${{ github.server_url }}/${{ github.repository }}"
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..$TAG"
+            COMPARE="**Full Changelog**: $REPO/compare/$PREV...$TAG"
+          else
+            RANGE="$TAG"
+            COMPARE=""
+          fi
+          # Commit-subject changelog, no per-PR author attribution.
+          CHANGES=$(git log --no-merges --pretty=format:'- %s' "$RANGE" \
+            | grep -vE '^- (chore: bump version|Merge )' || true)
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "$CHANGES"
+            echo ""
+            echo "$COMPARE"
+          } > release_notes.md
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -112,6 +136,6 @@ jobs:
           else
             gh release create "$TAG" \
               "$ZIP_NAME" \
-              --generate-notes \
+              --notes-file release_notes.md \
               --title "$TAG"
           fi
