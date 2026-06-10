@@ -30,7 +30,7 @@
 
 Unreal MCP connects AI assistants to the Unreal Editor through the [Model Context Protocol](https://modelcontextprotocol.io/). Spawn actors, build Blueprint graphs, construct Behavior Trees, design UMG widgets, edit materials, author cinematics — all from natural language.
 
-**191 actions across 16 domains**, plus `execute_python` as an escape hatch — run any BlueprintCallable function or editor subsystem the engine exposes to Python, on the fly.
+**224 actions across 19 domains**, plus `execute_python` as an escape hatch — run any BlueprintCallable function or editor subsystem the engine exposes to Python, on the fly.
 
 **Easy to extend.** Adding an action is a Python function plus a catalog regen — no C++ and no editor rebuild on the Python path. When you need something Python doesn't expose (e.g. reference-skeleton bones), an optional C++ helper layer is there too. See [CLAUDE.md](CLAUDE.md) for the step-by-step workflow.
 
@@ -48,22 +48,25 @@ Each row is one **namespace tool**. The action set is large but the tool list st
 
 | Domain | Capabilities | Actions |
 |---|---|:---:|
-| **actor** | Spawn (class/object/surface raycast), transform get/set, properties, live component properties, hierarchy (attach/detach), folders, tags, layers, bounds, selection, duplication, class queries. | 36 |
+| **actor** | Spawn (class/object/surface raycast), transform get/set, properties, live component properties, hierarchy (attach/detach), folders, tags, bounds, selection, duplication, class queries. | 36 |
 | **material** | Create materials & instances, author expression graphs, connect to material properties, MI parameters (scalar/vector/texture/switch), reparent, auto-layout, introspection. | 20 |
+| **asset** | Duplicate/rename/delete/save, list, dependencies & referencers, metadata tags, directories, search, FBX import/export, texture import. | 19 |
 | **blueprint** | Create Blueprints, read/build graphs, add/connect/remove nodes, member variables (+ flags), SCS components, compile, auto-layout. | 19 |
 | **animation** | AnimSequence info, notify tracks, sync markers, float curves; SkeletalMesh sockets & bones (C++-backed); skeleton info. | 17 |
-| **asset** | Duplicate/rename/delete/save, list, dependencies & referencers, metadata tags, directories, search. | 16 |
 | **util** | Run arbitrary Unreal Python, console commands & CVars, viewport camera, PIE control, project info, class/enum reflection, output log, LiveCoding compile. | 15 |
+| **level_sequence** | Create cinematics, camera with Camera Cut track, spawnable/possessable bindings, transform & skeletal-anim tracks, keyframes, Sequencer open/close. | 13 |
 | **behavior_tree** | Create & read Behavior Trees, Blackboard keys, build complete BT hierarchies. | 12 |
+| **static_mesh** | Mesh info (LODs/tris/verts), LOD generation & reuse, materials, collision (simple/convex/per-LOD). | 12 |
 | **umg** | Create Widget Blueprints, add/remove widgets (15 types), properties, slot layout, text style, compile. | 10 |
-| **level_sequence** | Create cinematics, spawnable/possessable bindings, transform tracks & keyframes, playback range. | 8 |
+| **editor** | Selection, material/mesh replacement, Blueprint-based replacement, actor merge/join, Proxy Geometry baking. | 9 |
 | **data_table** | Create DataTables, read/write rows (JSON/CSV), columns, row management. | 8 |
 | **level** | Create/open levels, list actors, world settings, current-level path, save. | 7 |
+| **control_rig** | Create Control Rigs (bones imported from a mesh), hierarchy authoring, RigVM unit nodes, recompile. | 6 |
 | **layer** | Create/delete layers, assign actors, list layer contents. | 6 |
-| **editor** | Selection, material/mesh replacement, Blueprint-based replacement. | 6 |
-| **static_mesh** | Mesh info (LODs/tris/verts), materials, collision (info + simple primitives). | 5 |
+| **retarget** | IK Rig & IK Retargeter authoring, chain auto-mapping, batch animation retargeting. | 6 |
 | **game** | Game mode, Enhanced Input actions & mappings. | 3 |
 | **texture** | Texture info, sRGB and compression settings. | 3 |
+| **vision** | Capture the viewport / any pose / auto-framed actors as MCP Images with on-image actor labels — the assistant sees and identifies the scene. | 3 |
 
 ## How Tools Work
 
@@ -174,7 +177,7 @@ Add the server to your MCP client config:
 
 1. Restart your MCP client
 2. The MCP server starts automatically
-3. Verify — you should see the 16 Unreal-MCPython domain tools listed in your client
+3. Verify — you should see the 19 Unreal-MCPython domain tools listed in your client
 
 ## Usage
 
@@ -199,109 +202,135 @@ Pass any action below to its domain tool. Use `{ "action": "list_actions" }` on 
 <details>
 <summary><strong>actor</strong> (36)</summary>
 
-`spawn_from_class` · `spawn_from_object` · `spawn_on_surface_raycast` · `duplicate_actor` · `duplicate_selected` · `delete_by_label` · `rename_actor` · `set_actor_hidden` · `select_actors` · `select_all` · `invert_selection` · `get_selected_actors` · `list_all_with_locations` · `get_all_details` · `get_actors_of_class` · `get_in_view_frustum` · `get_transform` · `set_transform` · `set_location` · `set_rotation` · `set_scale` · `get_property` · `set_property` · `get_component_property` · `set_component_property` · `list_actor_components` · `attach_actor` · `detach_actor` · `get_attached_actors` · `set_actor_folder` · `get_actor_folder` · `add_actor_tag` · `remove_actor_tag` · `get_actor_tags` · `get_actor_bounds` · `line_trace`
+`add_actor_tag` · `attach_actor` · `delete_by_label` · `detach_actor` · `duplicate_actor` · `duplicate_selected` · `get_actor_bounds` · `get_actor_folder` · `get_actor_tags` · `get_actors_of_class` · `get_all_details` · `get_attached_actors` · `get_component_property` · `get_in_view_frustum` · `get_property` · `get_selected_actors` · `get_transform` · `invert_selection` · `line_trace` · `list_actor_components` · `list_all_with_locations` · `remove_actor_tag` · `rename_actor` · `select_actors` · `select_all` · `set_actor_folder` · `set_actor_hidden` · `set_component_property` · `set_location` · `set_property` · `set_rotation` · `set_scale` · `set_transform` · `spawn_from_class` · `spawn_from_object` · `spawn_on_surface_raycast`
 
 </details>
 
 <details>
 <summary><strong>material</strong> (20)</summary>
 
-`create_material` · `create_material_instance` · `set_instance_parent` · `create_expression` · `set_expression_property` · `delete_expression` · `connect_expressions` · `connect_property` · `layout_expressions` · `recompile` · `get_material_info` · `list_parameters` · `get_mi_scalar_param` · `set_mi_scalar_param` · `get_mi_vector_param` · `set_mi_vector_param` · `get_mi_texture_param` · `set_mi_texture_param` · `get_mi_static_switch` · `set_mi_static_switch`
+`connect_expressions` · `connect_property` · `create_expression` · `create_material` · `create_material_instance` · `delete_expression` · `get_material_info` · `get_mi_scalar_param` · `get_mi_static_switch` · `get_mi_texture_param` · `get_mi_vector_param` · `layout_expressions` · `list_parameters` · `recompile` · `set_expression_property` · `set_instance_parent` · `set_mi_scalar_param` · `set_mi_static_switch` · `set_mi_texture_param` · `set_mi_vector_param`
+
+</details>
+
+<details>
+<summary><strong>asset</strong> (19)</summary>
+
+`asset_exists` · `delete_asset` · `delete_directory` · `duplicate_asset` · `export_fbx` · `find_by_query` · `find_referencers` · `get_asset_info` · `get_dependencies` · `get_metadata_tag` · `get_static_mesh_details` · `import_fbx` · `import_texture` · `list_assets` · `make_directory` · `remove_metadata_tag` · `rename_asset` · `save_asset` · `set_metadata_tag`
 
 </details>
 
 <details>
 <summary><strong>blueprint</strong> (19)</summary>
 
-`create_blueprint` · `get_blueprint_graph_info` · `list_callable_functions` · `list_blueprint_variables` · `add_variable` · `set_variable_flags` · `add_blueprint_node` · `connect_blueprint_pins` · `remove_blueprint_node` · `set_blueprint_node_position` · `build_blueprint_graph` · `auto_layout_graph` · `compile_blueprint` · `get_selected_bp_nodes` · `get_selected_bp_node_infos` · `list_blueprint_components` · `add_component_to_blueprint` · `remove_component_from_blueprint` · `set_component_property`
+`add_blueprint_node` · `add_component_to_blueprint` · `add_variable` · `auto_layout_graph` · `build_blueprint_graph` · `compile_blueprint` · `connect_blueprint_pins` · `create_blueprint` · `get_blueprint_graph_info` · `get_selected_bp_node_infos` · `get_selected_bp_nodes` · `list_blueprint_components` · `list_blueprint_variables` · `list_callable_functions` · `remove_blueprint_node` · `remove_component_from_blueprint` · `set_blueprint_node_position` · `set_component_property` · `set_variable_flags`
 
 </details>
 
 <details>
 <summary><strong>animation</strong> (17)</summary>
 
-`get_anim_sequence_info` · `list_notify_tracks` · `add_notify_track` · `remove_notify_track` · `list_notifies` · `list_sync_markers` · `add_sync_marker` · `list_curves` · `add_float_curve` · `remove_curve` · `get_skeletal_mesh_info` · `list_sockets` · `find_socket` · `add_socket` · `remove_socket` · `list_bones` · `get_skeleton_info`
-
-</details>
-
-<details>
-<summary><strong>asset</strong> (16)</summary>
-
-`find_by_query` · `get_asset_info` · `asset_exists` · `list_assets` · `duplicate_asset` · `rename_asset` · `delete_asset` · `save_asset` · `get_dependencies` · `find_referencers` · `get_metadata_tag` · `set_metadata_tag` · `remove_metadata_tag` · `make_directory` · `delete_directory` · `get_static_mesh_details`
+`add_float_curve` · `add_notify_track` · `add_socket` · `add_sync_marker` · `find_socket` · `get_anim_sequence_info` · `get_skeletal_mesh_info` · `get_skeleton_info` · `list_bones` · `list_curves` · `list_notifies` · `list_notify_tracks` · `list_sockets` · `list_sync_markers` · `remove_curve` · `remove_notify_track` · `remove_socket`
 
 </details>
 
 <details>
 <summary><strong>util</strong> (15)</summary>
 
-`execute_python` · `execute_console_command` · `get_cvar` · `get_output_log` · `print_message` · `get_project_info` · `list_class_properties` · `list_enum_values` · `get_viewport_camera` · `set_viewport_camera` · `is_in_pie` · `start_pie` · `stop_pie` · `save_all_dirty` · `livecoding_compile`
+`execute_console_command` · `execute_python` · `get_cvar` · `get_output_log` · `get_project_info` · `get_viewport_camera` · `is_in_pie` · `list_class_properties` · `list_enum_values` · `livecoding_compile` · `print_message` · `save_all_dirty` · `set_viewport_camera` · `start_pie` · `stop_pie`
+
+</details>
+
+<details>
+<summary><strong>level_sequence</strong> (13)</summary>
+
+`add_anim_track` · `add_camera` · `add_possessable` · `add_spawnable_from_class` · `add_transform_keyframe` · `add_transform_track` · `close_sequencer` · `convert_binding` · `create_level_sequence` · `get_sequence_info` · `open_in_sequencer` · `remove_binding` · `set_playback_range`
 
 </details>
 
 <details>
 <summary><strong>behavior_tree</strong> (12)</summary>
 
-`list_behavior_trees` · `create_behavior_tree` · `get_behavior_tree_structure` · `build_behavior_tree` · `list_bt_node_classes` · `get_bt_node_details` · `get_selected_bt_nodes` · `create_blackboard` · `get_blackboard_data` · `add_blackboard_key` · `remove_blackboard_key` · `set_blackboard_to_behavior_tree`
+`add_blackboard_key` · `build_behavior_tree` · `create_behavior_tree` · `create_blackboard` · `get_behavior_tree_structure` · `get_blackboard_data` · `get_bt_node_details` · `get_selected_bt_nodes` · `list_behavior_trees` · `list_bt_node_classes` · `remove_blackboard_key` · `set_blackboard_to_behavior_tree`
+
+</details>
+
+<details>
+<summary><strong>static_mesh</strong> (12)</summary>
+
+`add_simple_collision` · `get_collision_info` · `get_lod_screen_sizes` · `get_static_mesh_info` · `list_static_mesh_materials` · `remove_collisions` · `remove_lods` · `set_convex_collision` · `set_lod_for_collision` · `set_lod_from_static_mesh` · `set_lods` · `set_static_mesh_material`
 
 </details>
 
 <details>
 <summary><strong>umg</strong> (10)</summary>
 
-`create_widget_blueprint` · `get_widget_blueprint_info` · `add_widget` · `remove_widget` · `set_widget_properties` · `set_widget_property` · `get_widget_property` · `set_slot_layout` · `set_text_style` · `compile_widget_blueprint`
+`add_widget` · `compile_widget_blueprint` · `create_widget_blueprint` · `get_widget_blueprint_info` · `get_widget_property` · `remove_widget` · `set_slot_layout` · `set_text_style` · `set_widget_properties` · `set_widget_property`
 
 **Widget types:** CanvasPanel, TextBlock, Button, Image, HorizontalBox, VerticalBox, Border, Overlay, ScrollBox, SizeBox, CheckBox, EditableText, EditableTextBox, ProgressBar, Slider
 
 </details>
 
 <details>
-<summary><strong>level_sequence</strong> (8)</summary>
+<summary><strong>editor</strong> (9)</summary>
 
-`create_level_sequence` · `get_sequence_info` · `set_playback_range` · `add_spawnable_from_class` · `add_possessable` · `remove_binding` · `add_transform_track` · `add_transform_keyframe`
+`create_proxy_actor` · `get_selected_assets` · `join_actors` · `merge_actors` · `replace_mesh_on_selected` · `replace_mesh_on_specified` · `replace_mtl_on_selected` · `replace_mtl_on_specified` · `replace_selected_with_bp`
 
 </details>
 
 <details>
 <summary><strong>data_table</strong> (8)</summary>
 
-`create_data_table` · `get_row_names` · `get_column_names` · `get_rows_as_json` · `export_to_csv` · `does_row_exist` · `remove_row` · `set_rows_from_json`
+`create_data_table` · `does_row_exist` · `export_to_csv` · `get_column_names` · `get_row_names` · `get_rows_as_json` · `remove_row` · `set_rows_from_json`
 
 </details>
 
 <details>
 <summary><strong>level</strong> (7)</summary>
 
-`create_level` · `load_level` · `get_current_level_path` · `save_current_level` · `save_all_levels` · `list_level_actors` · `set_world_settings`
+`create_level` · `get_current_level_path` · `list_level_actors` · `load_level` · `save_all_levels` · `save_current_level` · `set_world_settings`
+
+</details>
+
+<details>
+<summary><strong>control_rig</strong> (6)</summary>
+
+`add_rig_bone` · `add_rig_null` · `add_unit_node` · `create_control_rig` · `get_control_rig_info` · `recompile_control_rig`
 
 </details>
 
 <details>
 <summary><strong>layer</strong> (6)</summary>
 
-`list_layers` · `create_layer` · `delete_layer` · `add_actor_to_layer` · `remove_actor_from_layer` · `get_actors_in_layer`
+`add_actor_to_layer` · `create_layer` · `delete_layer` · `get_actors_in_layer` · `list_layers` · `remove_actor_from_layer`
 
 </details>
 
 <details>
-<summary><strong>editor</strong> (6)</summary>
+<summary><strong>retarget</strong> (6)</summary>
 
-`get_selected_assets` · `replace_mtl_on_selected` · `replace_mtl_on_specified` · `replace_mesh_on_selected` · `replace_mesh_on_specified` · `replace_selected_with_bp`
-
-</details>
-
-<details>
-<summary><strong>static_mesh</strong> (5)</summary>
-
-`get_static_mesh_info` · `list_static_mesh_materials` · `set_static_mesh_material` · `get_collision_info` · `add_simple_collision`
+`add_retarget_chain` · `auto_map_chains` · `batch_retarget` · `create_ik_rig` · `create_retargeter` · `get_ik_rig_info`
 
 </details>
 
 <details>
-<summary><strong>game</strong> (3) &amp; <strong>texture</strong> (3)</summary>
+<summary><strong>game</strong> (3)</summary>
 
-**game:** `set_game_mode` · `add_input_action` · `add_input_mapping`
+`add_input_action` · `add_input_mapping` · `set_game_mode`
 
-**texture:** `get_texture_info` · `set_texture_srgb` · `set_texture_compression`
+</details>
+
+<details>
+<summary><strong>texture</strong> (3)</summary>
+
+`get_texture_info` · `set_texture_compression` · `set_texture_srgb`
+
+</details>
+
+<details>
+<summary><strong>vision</strong> (3)</summary>
+
+`capture_actors` · `capture_from` · `capture_viewport`
 
 </details>
 
