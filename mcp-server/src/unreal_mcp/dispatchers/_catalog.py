@@ -680,6 +680,32 @@ CATALOG = {
             'doc': 'Sets a vector parameter on a Material Instance. Expects value as [R,G,B,A]. Returns JSON string.',
         },
     },
+    'retarget': {
+        'add_retarget_chain': {
+            'params': "ik_rig_path, chain_name, start_bone, end_bone, goal_name=''",
+            'doc': "Adds a retarget chain (e.g. 'Spine': spine_01..spine_03) to an IK Rig (requires the IKRig plugin).",
+        },
+        'auto_map_chains': {
+            'params': "retargeter_path, mode='FUZZY', force=True",
+            'doc': 'Re-runs chain mapping on an IK Retargeter. mode: FUZZY, EXACT, or CLEAR (requires the IKRig plugin).',
+        },
+        'batch_retarget': {
+            'params': "retargeter_path, anim_paths, source_mesh_path, target_mesh_path, search='', replace='', prefix='', suffix='_Retargeted'",
+            'doc': 'Duplicates and retargets animations through an IK Retargeter; returns the new asset paths (requires the IKRig plugin).',
+        },
+        'create_ik_rig': {
+            'params': 'asset_path, skeletal_mesh_path, retarget_root',
+            'doc': 'Creates an IK Rig for a skeletal mesh, optionally setting the retarget root bone (requires the IKRig plugin).',
+        },
+        'create_retargeter': {
+            'params': 'asset_path, source_ik_rig_path, target_ik_rig_path, auto_map=True',
+            'doc': 'Creates an IK Retargeter wired to source/target IK Rigs, with optional fuzzy chain auto-mapping (requires the IKRig plugin).',
+        },
+        'get_ik_rig_info': {
+            'params': 'ik_rig_path',
+            'doc': 'Returns the skeletal mesh, retarget root, and chains of an IK Rig (requires the IKRig plugin).',
+        },
+    },
     'static_mesh': {
         'add_simple_collision': {
             'params': "asset_path, shape='BOX'",
