@@ -22,8 +22,30 @@ import tempfile
 import traceback
 
 
-def _capture_scene(world, loc, rot, width, height, fov):
-    """Render the scene from (loc, rot) to a PNG and return its base64 string."""
+def _project(loc, rot, fov, width, height, world_pt):
+    """Project a world point to (x, y) pixel coords for the given camera, or None if behind."""
+    fwd = unreal.MathLibrary.get_forward_vector(rot)
+    right = unreal.MathLibrary.get_right_vector(rot)
+    up = unreal.MathLibrary.get_up_vector(rot)
+    rel = world_pt - loc
+    cx = rel.x * fwd.x + rel.y * fwd.y + rel.z * fwd.z          # depth along view
+    if cx <= 1.0:
+        return None
+    rx = rel.x * right.x + rel.y * right.y + rel.z * right.z
+    ry = rel.x * up.x + rel.y * up.y + rel.z * up.z
+    aspect = float(width) / float(height)
+    tan_h = math.tan(math.radians(fov) / 2.0)                   # fov_angle is horizontal
+    tan_v = tan_h / aspect
+    sx = ((rx / cx) / tan_h * 0.5 + 0.5) * width
+    sy = (1.0 - ((ry / cx) / tan_v * 0.5 + 0.5)) * height
+    return (sx, sy)
+
+
+def _capture_scene(world, loc, rot, width, height, fov, annotations=None):
+    """Render the scene from (loc, rot) to a PNG and return its base64 string.
+
+    annotations: optional list of {"label": str, "world": unreal.Vector} drawn on top.
+    """
     width = max(64, min(int(width), 4096))
     height = max(64, min(int(height), 4096))
     cap_actor = None
@@ -38,6 +60,22 @@ def _capture_scene(world, loc, rot, width, height, fov):
         comp.set_editor_property("capture_source", unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR)
         comp.set_editor_property("fov_angle", float(fov))
         comp.capture_scene()
+
+        if annotations:
+            font = unreal.EditorAssetLibrary.load_asset("/Engine/EngineFonts/Roboto")
+            canvas, _size, ctx = unreal.RenderingLibrary.begin_draw_canvas_to_render_target(world, rt)
+            yellow = unreal.LinearColor(1.0, 0.95, 0.1, 1.0)
+            for ann in annotations:
+                scr = _project(loc, rot, fov, width, height, ann["world"])
+                if not scr:
+                    continue
+                pos = unreal.Vector2D(scr[0], scr[1])
+                canvas.draw_box(unreal.Vector2D(scr[0] - 5, scr[1] - 5), unreal.Vector2D(10, 10), 2.0, yellow)
+                canvas.draw_text(font, ann["label"], unreal.Vector2D(scr[0], scr[1] + 10),
+                                 scale=unreal.Vector2D(1.3, 1.3),
+                                 render_color=yellow, centre_x=True, outlined=True)
+            unreal.RenderingLibrary.end_draw_canvas_to_render_target(world, ctx)
+
         out_dir = tempfile.gettempdir()
         out_name = f"mcp_viewport_{os.getpid()}.png"
         unreal.RenderingLibrary.export_render_target(world, rt, out_dir, out_name)
@@ -103,8 +141,11 @@ def ue_capture_from(location: list = None, rotation: list = None,
 
 
 def ue_capture_actors(actor_labels: list = None, width: int = 1280, height: int = 720,
-                      fov: float = 60.0, padding: float = 1.6) -> str:
-    """Frames the given actors (by label) from an elevated 3/4 view and captures them as a PNG."""
+                      fov: float = 60.0, padding: float = 1.6, annotate: bool = True) -> str:
+    """Frames the given actors (by label) from an elevated 3/4 view and captures them.
+
+    With annotate=True, each actor's label is drawn on the image so it can be identified.
+    """
     if not actor_labels:
         return json.dumps({"success": False, "message": "Required parameter 'actor_labels' is missing."})
     try:
@@ -115,12 +156,14 @@ def ue_capture_actors(actor_labels: list = None, width: int = 1280, height: int 
         mins = [None, None, None]
         maxs = [None, None, None]
         found = []
+        annotations = []
         for label in actor_labels:
             actor = _actor_by_label(label)
             if not actor:
                 continue
             found.append(label)
             origin, extent = actor.get_actor_bounds(False)
+            annotations.append({"label": label, "world": unreal.Vector(origin.x, origin.y, origin.z)})
             lo = [origin.x - extent.x, origin.y - extent.y, origin.z - extent.z]
             hi = [origin.x + extent.x, origin.y + extent.y, origin.z + extent.z]
             for i in range(3):
@@ -139,7 +182,8 @@ def ue_capture_actors(actor_labels: list = None, width: int = 1280, height: int 
         cam = unreal.Vector(center.x + d.x * dist, center.y + d.y * dist, center.z + d.z * dist)
         rot = unreal.MathLibrary.find_look_at_rotation(cam, center)
 
-        img, w, h = _capture_scene(world, cam, rot, width, height, fov)
+        img, w, h = _capture_scene(world, cam, rot, width, height, fov,
+                                   annotations=annotations if annotate else None)
         return json.dumps({"success": True, "image_data": img, "width": w, "height": h,
                            "framed_actors": found,
                            "camera_location": [round(cam.x, 2), round(cam.y, 2), round(cam.z, 2)],

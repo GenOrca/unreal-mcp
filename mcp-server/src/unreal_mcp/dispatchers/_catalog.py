@@ -802,8 +802,8 @@ CATALOG = {
     },
     'vision': {
         'capture_actors': {
-            'params': 'actor_labels, width=1280, height=720, fov=60.0, padding=1.6',
-            'doc': 'Frames the given actors (by label) from an elevated 3/4 view and captures them as a PNG.',
+            'params': 'actor_labels, width=1280, height=720, fov=60.0, padding=1.6, annotate=True',
+            'doc': 'Frames the given actors (by label) from an elevated 3/4 view and captures them.',
         },
         'capture_from': {
             'params': 'location, rotation, width=1280, height=720, fov=90.0',

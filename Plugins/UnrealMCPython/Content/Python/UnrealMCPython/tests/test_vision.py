@@ -48,3 +48,17 @@ class TestVisionActions(MCPTestCase):
     def test_capture_actors_unknown(self):
         r = self.call("vision_actions", "ue_capture_actors", actor_labels=["NoSuchActor_XYZ"])
         self.assertFalse(r.get("success"))
+
+    def test_capture_actors_no_annotate(self):
+        spawn = self.call("actor_actions", "ue_spawn_from_object",
+                          asset_path="/Engine/BasicShapes/Cube", location=[0, 0, 100])
+        self.assertSuccess(spawn)
+        label = spawn["actor_label"]
+        try:
+            r = self.call("vision_actions", "ue_capture_actors",
+                          actor_labels=[label], width=320, height=180, annotate=False)
+            self.assertSuccess(r)
+            import base64
+            self.assertEqual(base64.b64decode(r["image_data"])[:4], b"\x89PNG")
+        finally:
+            self.delete_actor_by_label(label)
