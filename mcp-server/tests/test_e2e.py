@@ -56,6 +56,30 @@ pytestmark = pytest.mark.skipif(
     reason=f"Unreal TCP server not reachable on {HOST}:{PORT} (open the editor to run E2E).",
 )
 
+# Editor-crash guard: if the editor was up when the module started but dies
+# mid-suite, every remaining test must FAIL (not skip, and not "pass" via a
+# connection-error dict that happens to carry a 'success' key). A green E2E run
+# must mean the editor survived the whole sweep — otherwise a `pytest && ...`
+# release chain would happily commit/PR on top of a crash.
+_EDITOR_WAS_UP = _editor_reachable()
+_CONNECTION_ERROR_MARKERS = ("Connection refused", "ConnectionReset", "Socket timeout",
+                             "No response received", "[WinError")
+
+
+@pytest.fixture(autouse=True)
+def _fail_if_editor_crashed():
+    if _EDITOR_WAS_UP and not _editor_reachable():
+        pytest.fail(f"Unreal editor crashed during the E2E suite "
+                    f"({HOST}:{PORT} no longer reachable). Investigate before merging.")
+    yield
+
+
+def _assert_not_connection_error(r, label):
+    if isinstance(r, dict):
+        msg = str(r.get("message", ""))
+        assert not any(m in msg for m in _CONNECTION_ERROR_MARKERS), \
+            f"{label}: editor connection lost mid-call: {msg}"
+
 
 def run(coro):
     return asyncio.run(coro)
@@ -147,3 +171,9 @@ def test_every_action_round_trips(domain, action):
         r = run(disp._dispatch(domain, action, {}))
     assert isinstance(r, dict), f"{domain}.{action} returned non-dict: {r!r}"
     assert "success" in r, f"chain/unwrap failed for {domain}.{action}: {r!r}"
+    _assert_not_connection_error(r, f"{domain}.{action}")
+
+
+def test_zzz_editor_survived_suite():
+    """Last test in the file: the editor must still be alive after the full sweep."""
+    assert _editor_reachable(), "Unreal editor is no longer reachable after the E2E suite (it crashed mid-run)."

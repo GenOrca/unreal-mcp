@@ -70,6 +70,12 @@ import runpy; runpy.run_module("UnrealMCPython.tests.run_all", run_name="__main_
 `test_coverage.py` enforces that **every** catalog action has an in-editor test
 (or is listed in `KNOWN_UNTESTED`, which should stay empty).
 
+**E2E editor-crash guard**: if the editor dies mid-suite, the remaining E2E tests FAIL
+(autouse fixture + connection-error assertions + a final liveness canary). A green E2E
+run therefore guarantees the editor survived the whole sweep — never chain
+`pytest && git commit && gh pr create` assuming connection-error results count as
+passes. Release chains stop at the first red gate.
+
 ## Adding an action to an existing domain
 
 1. Prototype fast with `util execute_python` (arbitrary Unreal Python, seconds-scale).
