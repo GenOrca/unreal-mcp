@@ -150,6 +150,16 @@ CATALOG = {
             'doc': '',
         },
     },
+    'anim_blueprint': {
+        'create_anim_blueprint': {
+            'params': "asset_path, skeleton_path, parent_class_path='/Script/Engine.AnimInstance'",
+            'doc': 'Creates an Animation Blueprint bound to a Skeleton (parent defaults to AnimInstance).',
+        },
+        'get_anim_blueprint_info': {
+            'params': 'asset_path',
+            'doc': "Returns an AnimBlueprint's target skeleton, generated class, and graph names.",
+        },
+    },
     'animation': {
         'add_float_curve': {
             'params': 'asset_path, curve_name, time_seconds, value',
