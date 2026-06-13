@@ -1,0 +1,100 @@
+name: E2E (self-hosted Unreal)
+
+# The offline gates in test.yml (catalog drift + dispatcher routing/coverage) run on
+# GitHub-hosted runners and automatically cover every domain, including `gas` and
+# `anim_blueprint`. They CANNOT run gate 3 (in-editor) or gate 4 (E2E) because those
+# need a live Unreal editor — hosted runners have no engine.
+#
+# This workflow closes that gap. It is manual (workflow_dispatch) and targets a
+# SELF-HOSTED Windows runner that has Unreal Engine + this project installed. It runs:
+#   • Gate 1  — catalog drift guard          (validate_tools.py)
+#   • Gate 2  — offline dispatcher tests      (pytest, E2E auto-skips while editor is down)
+#   • Gate 3  — full in-editor suite          (UnrealEditor-Cmd headless, runs run_all.py)
+#   • Gate 4  — E2E over the live TCP server   (editor launched in background, pytest test_e2e)
+#
+# Runner prerequisites (one-time):
+#   - Register a self-hosted runner with labels: [self-hosted, Windows, unreal]
+#   - Install `uv` on the runner (https://docs.astral.sh/uv/)
+#   - Set repo variable UE_ROOT to the engine root, e.g. C:\Program Files\Epic Games\UE_5.5
+#     (Settings → Secrets and variables → Actions → Variables), or pass engine_root on dispatch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine_root:
+        description: "Unreal Engine root dir (overrides the UE_ROOT repo variable)"
+        required: false
+        type: string
+
+jobs:
+  e2e:
+    name: 4-gate + E2E (live editor)
+    runs-on: [self-hosted, Windows, unreal]
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      UE_ROOT: ${{ inputs.engine_root != '' && inputs.engine_root || vars.UE_ROOT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve paths
+        id: paths
+        run: |
+          if (-not $env:UE_ROOT) { throw "UE_ROOT is not set. Set the repo variable UE_ROOT or pass engine_root on dispatch." }
+          $cmd = Join-Path $env:UE_ROOT "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+          $editor = Join-Path $env:UE_ROOT "Engine\Binaries\Win64\UnrealEditor.exe"
+          if (-not (Test-Path $cmd)) { throw "UnrealEditor-Cmd.exe not found at $cmd" }
+          $uproject = Join-Path $env:GITHUB_WORKSPACE "UnrealMCPSample.uproject"
+          if (-not (Test-Path $uproject)) { throw "UnrealMCPSample.uproject not found at $uproject" }
+          "cmd=$cmd"           | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "editor=$editor"     | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "uproject=$uproject" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # ── Gate 1: catalog vs ue_* signature drift ──────────────────────────────────
+      - name: Gate 1 — catalog drift guard
+        working-directory: mcp-server
+        run: uv run python validate_tools.py
+
+      # ── Gate 2: offline dispatcher tests (E2E auto-skips, editor not up yet) ──────
+      - name: Gate 2 — offline dispatcher tests
+        working-directory: mcp-server
+        run: uv run --extra dev pytest -q tests/test_dispatcher.py tests/test_core.py
+
+      # ── Gate 3: full in-editor suite, headless. Exercises every domain against a
+      #            real editor and exits. The suite prints a "Results:" summary line. ──
+      - name: Gate 3 — in-editor suite (headless)
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "mcp_inEditor.log"
+          $script = "import runpy; runpy.run_module('UnrealMCPython.tests.run_all', run_name='__main__')"
+          & "${{ steps.paths.outputs.cmd }}" "${{ steps.paths.outputs.uproject }}" `
+            -run=pythonscript -script="$script" `
+            -unattended -nosplash -nop4 -stdout -FullStdOutLogOutput -nopause 2>&1 |
+            Tee-Object -FilePath $log | Out-Host
+          $results = Select-String -Path $log -Pattern "Results: .* / \d+ total" | Select-Object -Last 1
+          if (-not $results) { throw "Gate 3: no Results summary found — the in-editor suite did not complete." }
+          Write-Host "Gate 3 summary: $($results.Line)"
+          if ($results.Line -notmatch "\| 0 failed \| 0 errors") { throw "Gate 3: in-editor suite reported failures/errors." }
+
+      # ── Gate 4: E2E over the live TCP server. Launch the full editor in the
+      #            background, wait for :12029, run the E2E pytest, then shut it down. ──
+      - name: Gate 4 — E2E over live editor
+        working-directory: mcp-server
+        run: |
+          $editor = Start-Process -FilePath "${{ steps.paths.outputs.editor }}" `
+            -ArgumentList @("${{ steps.paths.outputs.uproject }}", "-nosplash", "-nop4", "-stdout") -PassThru
+          try {
+            $up = $false
+            foreach ($i in 1..60) {
+              try { (New-Object Net.Sockets.TcpClient).Connect("127.0.0.1", 12029); $up = $true; break }
+              catch { Start-Sleep -Seconds 5 }
+            }
+            if (-not $up) { throw "Gate 4: editor TCP server never came up on :12029 within ~5 min." }
+            uv run --extra dev pytest -q tests/test_e2e.py
+          }
+          finally {
+            if ($editor -and -not $editor.HasExited) { Stop-Process -Id $editor.Id -Force }
+          }
