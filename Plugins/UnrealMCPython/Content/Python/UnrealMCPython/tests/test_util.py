@@ -129,6 +129,35 @@ class TestUtilActions(MCPTestCase):
         r = self.call("util_actions", "ue_get_cvar")
         self.assertFalse(r.get("success"))
 
+    def test_set_cvar_round_trips(self):
+        name = "r.ScreenPercentage"
+        before = self.call("util_actions", "ue_get_cvar", name=name)["value"]
+        try:
+            r = self.call("util_actions", "ue_set_cvar", name=name, value="73")
+            self.assertSuccess(r)
+            got = self.call("util_actions", "ue_get_cvar", name=name)["value"]
+            self.assertEqual(float(got), 73.0)
+        finally:
+            self.call("util_actions", "ue_set_cvar", name=name, value=before)
+
+    def test_set_cvar_missing_param(self):
+        r = self.call("util_actions", "ue_set_cvar", name="r.ScreenPercentage")
+        self.assertFalse(r.get("success"))
+
+    def test_set_log_verbosity(self):
+        try:
+            r = self.call("util_actions", "ue_set_log_verbosity",
+                          category="LogMCPython", verbosity="Verbose")
+            self.assertSuccess(r)
+        finally:
+            self.call("util_actions", "ue_set_log_verbosity",
+                      category="LogMCPython", verbosity="Log")
+
+    def test_set_log_verbosity_invalid(self):
+        r = self.call("util_actions", "ue_set_log_verbosity",
+                      category="LogMCPython", verbosity="NopeLevel")
+        self.assertFalse(r.get("success"))
+
     def test_get_project_info(self):
         r = self.call("util_actions", "ue_get_project_info")
         self.assertSuccess(r)

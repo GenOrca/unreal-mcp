@@ -1,4 +1,5 @@
-from UnrealMCPython.tests.base import MCPTestCase
+import unreal
+from UnrealMCPython.tests.base import MCPTestCase, TEST_ROOT
 
 _CLASS_PATH = "/Script/Engine.PointLight"
 
@@ -157,4 +158,48 @@ class TestEditorActions(MCPTestCase):
         r = self.call("editor_actions", "ue_merge_actors",
                       actor_labels=["NoSuchActor_XYZ"],
                       base_package_name="/Game/Tests/MCP/Nope")
+        self.assertFalse(r.get("success"))
+
+
+class TestEditorAssetControl(MCPTestCase):
+
+    _ASSET = f"{TEST_ROOT}/MCP_OpenEditorTest"
+
+    def setUp(self):
+        self.ensure_test_dir()
+        self.delete_asset(self._ASSET)
+        factory = unreal.BlueprintFactory()
+        factory.set_editor_property("parent_class", unreal.Actor)
+        name = self._ASSET.rsplit("/", 1)[1]
+        self._bp = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            name, TEST_ROOT, unreal.Blueprint, factory)
+        self.assertIsNotNone(self._bp, "could not create test blueprint")
+
+    def tearDown(self):
+        try:
+            self.call("editor_actions", "ue_close_asset_editor", asset_path=self._ASSET)
+        finally:
+            self.delete_asset(self._ASSET)
+
+    def _open_paths(self):
+        opened = self.call("editor_actions", "ue_get_open_assets")
+        self.assertSuccess(opened)
+        return [a["asset_path"].split(".")[0] for a in opened["open_assets"]]
+
+    def test_open_lists_then_close_removes(self):
+        r = self.call("editor_actions", "ue_open_editor_for_asset", asset_path=self._ASSET)
+        self.assertSuccess(r)
+        self.assertIn(self._ASSET, self._open_paths())
+
+        r = self.call("editor_actions", "ue_close_asset_editor", asset_path=self._ASSET)
+        self.assertSuccess(r)
+        self.assertNotIn(self._ASSET, self._open_paths())
+
+    def test_open_editor_rejects_missing_asset(self):
+        r = self.call("editor_actions", "ue_open_editor_for_asset",
+                      asset_path=f"{TEST_ROOT}/NoSuchAsset_XYZ")
+        self.assertFalse(r.get("success"))
+
+    def test_open_editor_missing_param(self):
+        r = self.call("editor_actions", "ue_open_editor_for_asset")
         self.assertFalse(r.get("success"))

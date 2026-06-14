@@ -661,3 +661,44 @@ def ue_create_proxy_actor(actor_labels: list = None, base_package_name: str = No
                            "source_destroyed": bool(destroy_source_actors)})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# ─── Asset editor control ─────────────────────────────────────────────────────
+
+def ue_open_editor_for_asset(asset_path: str = None) -> str:
+    """Opens the asset-specific editor (Blueprint, Material, etc.) for an asset."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        unreal.get_editor_subsystem(unreal.AssetEditorSubsystem).open_editor_for_assets([asset])
+        return json.dumps({"success": True, "asset_path": asset_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_open_assets() -> str:
+    """Lists assets that currently have an editor open."""
+    try:
+        assets = unreal.MCPythonHelper.get_all_edited_assets()
+        open_assets = [{"asset_name": a.get_name(), "asset_path": a.get_path_name(),
+                        "asset_class": a.get_class().get_name()} for a in assets if a]
+        return json.dumps({"success": True, "count": len(open_assets), "open_assets": open_assets})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_close_asset_editor(asset_path: str = None) -> str:
+    """Closes any open editor for the given asset."""
+    if asset_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'asset_path' is missing."})
+    try:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if not asset:
+            return json.dumps({"success": False, "message": f"Asset not found: {asset_path}"})
+        unreal.get_editor_subsystem(unreal.AssetEditorSubsystem).close_all_editors_for_asset(asset)
+        return json.dumps({"success": True, "asset_path": asset_path})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

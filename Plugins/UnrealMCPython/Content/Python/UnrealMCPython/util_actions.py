@@ -249,6 +249,38 @@ def ue_get_cvar(name: str = None) -> str:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
+def ue_set_cvar(name: str = None, value: str = None) -> str:
+    """Sets a console variable, e.g. name='r.ScreenPercentage', value='75'. Reads it back to confirm."""
+    if name is None or value is None:
+        return json.dumps({"success": False, "message": "Required parameters: name, value."})
+    try:
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        unreal.SystemLibrary.execute_console_command(world, f"{name} {value}")
+        new_value = unreal.SystemLibrary.get_console_variable_string_value(name)
+        return json.dumps({"success": True, "name": name, "requested": str(value), "value": new_value})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+_LOG_VERBOSITIES = {"NoLogging", "Fatal", "Error", "Warning", "Display",
+                    "Log", "Verbose", "VeryVerbose", "All", "Default"}
+
+
+def ue_set_log_verbosity(category: str = None, verbosity: str = None) -> str:
+    """Sets a log category's verbosity via the 'Log' console command (e.g. 'LogBlueprint', 'Verbose')."""
+    if category is None or verbosity is None:
+        return json.dumps({"success": False, "message": "Required parameters: category, verbosity."})
+    if verbosity not in _LOG_VERBOSITIES:
+        return json.dumps({"success": False, "message": f"Invalid verbosity '{verbosity}'.",
+                           "valid": sorted(_LOG_VERBOSITIES)})
+    try:
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        unreal.SystemLibrary.execute_console_command(world, f"Log {category} {verbosity}")
+        return json.dumps({"success": True, "category": category, "verbosity": verbosity})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
 def ue_get_project_info() -> str:
     """Returns project name, directories, and engine version."""
     try:

@@ -505,9 +505,17 @@ CATALOG = {
         },
     },
     'editor': {
+        'close_asset_editor': {
+            'params': 'asset_path',
+            'doc': 'Closes any open editor for the given asset.',
+        },
         'create_proxy_actor': {
             'params': 'actor_labels, base_package_name, screen_size=300, destroy_source_actors=False',
             'doc': 'Bakes static mesh actors into ONE simplified proxy mesh (Proxy Geometry tool) and spawns it.',
+        },
+        'get_open_assets': {
+            'params': '',
+            'doc': 'Lists assets that currently have an editor open.',
         },
         'get_selected_assets': {
             'params': '',
@@ -520,6 +528,10 @@ CATALOG = {
         'merge_actors': {
             'params': 'actor_labels, base_package_name, destroy_source_actors=False',
             'doc': 'Merges static mesh actors into ONE new static mesh asset + actor (geometry is baked together).',
+        },
+        'open_editor_for_asset': {
+            'params': 'asset_path',
+            'doc': 'Opens the asset-specific editor (Blueprint, Material, etc.) for an asset.',
         },
         'replace_mesh_on_selected': {
             'params': 'mesh_to_be_replaced_path, new_mesh_path',
@@ -978,6 +990,14 @@ CATALOG = {
         'screen_to_world': {
             'params': 'x, y, distance=1000.0',
             'doc': "Deprojects a viewport pixel (x, y) to a world location at 'distance' along the view ray.",
+        },
+        'set_cvar': {
+            'params': 'name, value',
+            'doc': "Sets a console variable, e.g. name='r.ScreenPercentage', value='75'. Reads it back to confirm.",
+        },
+        'set_log_verbosity': {
+            'params': 'category, verbosity',
+            'doc': "Sets a log category's verbosity via the 'Log' console command (e.g. 'LogBlueprint', 'Verbose').",
         },
         'set_viewport_camera': {
             'params': 'location, rotation',
