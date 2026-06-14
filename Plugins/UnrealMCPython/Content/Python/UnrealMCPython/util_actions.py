@@ -173,6 +173,27 @@ def ue_set_viewport_camera(location: list = None, rotation: list = None) -> str:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
+def ue_world_to_screen(location: list = None) -> str:
+    """Projects a world location to active level-viewport pixel coords (editor viewport, no PIE needed)."""
+    if location is None or len(location) != 3:
+        return json.dumps({"success": False, "message": "Required parameter 'location' must be a list of 3 floats."})
+    try:
+        loc = unreal.Vector(float(location[0]), float(location[1]), float(location[2]))
+        return unreal.MCPythonHelper.world_to_screen(loc)
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_screen_to_world(x: float = None, y: float = None, distance: float = 1000.0) -> str:
+    """Deprojects a viewport pixel (x, y) to a world location at 'distance' along the view ray."""
+    if x is None or y is None:
+        return json.dumps({"success": False, "message": "Required parameters: x, y."})
+    try:
+        return unreal.MCPythonHelper.screen_to_world(float(x), float(y), float(distance))
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
 def ue_is_in_pie() -> str:
     """Returns whether Play-In-Editor is currently active."""
     try:

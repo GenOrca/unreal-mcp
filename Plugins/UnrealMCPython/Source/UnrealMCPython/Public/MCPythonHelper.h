@@ -319,4 +319,16 @@ public:
         ({states:[{name,anim?}], entry?, transitions:[{from,to,var?,op?,value?}]}). Returns JSON. */
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString BuildAnimStateMachine(UAnimBlueprint* AnimBP, const FString& SpecJson);
+
+    // ─── Editor viewport projection ───────────────────────────────────────────────
+    // FEditorViewportClient / FSceneView are not exposed to Python, so world<->screen
+    // projection against the active level editor viewport needs C++.
+
+    /** Project a world location to active-level-viewport pixel coords. Returns JSON {x,y,visible,viewport_*}. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString WorldToScreen(FVector WorldLocation);
+
+    /** Deproject a viewport pixel to a world location at the given distance along the view ray. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString ScreenToWorld(float ScreenX, float ScreenY, float Distance);
 };

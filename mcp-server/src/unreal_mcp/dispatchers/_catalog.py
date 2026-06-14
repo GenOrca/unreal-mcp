@@ -975,6 +975,10 @@ CATALOG = {
             'params': '',
             'doc': 'Saves all dirty packages (modified maps and content).',
         },
+        'screen_to_world': {
+            'params': 'x, y, distance=1000.0',
+            'doc': "Deprojects a viewport pixel (x, y) to a world location at 'distance' along the view ray.",
+        },
         'set_viewport_camera': {
             'params': 'location, rotation',
             'doc': 'Sets the level viewport camera. location=[x,y,z], rotation=[pitch,yaw,roll].',
@@ -986,6 +990,10 @@ CATALOG = {
         'stop_pie': {
             'params': '',
             'doc': 'Stops Play-In-Editor.',
+        },
+        'world_to_screen': {
+            'params': 'location',
+            'doc': 'Projects a world location to active level-viewport pixel coords (editor viewport, no PIE needed).',
         },
     },
     'vision': {

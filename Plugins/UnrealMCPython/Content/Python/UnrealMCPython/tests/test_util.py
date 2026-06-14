@@ -74,6 +74,36 @@ class TestUtilActions(MCPTestCase):
         r = self.call("util_actions", "ue_set_viewport_camera")
         self.assertFalse(r.get("success"))
 
+    # ── world<->screen projection ────────────────────────────────────────────────
+
+    def _skip_if_no_viewport(self, r):
+        if not r.get("success") and "No active level viewport" in r.get("message", ""):
+            self.skipTest("No active level viewport for projection")
+
+    def test_screen_world_round_trips_back_to_pixel(self):
+        # A deprojected world point lies on the view ray of its pixel, so re-projecting it
+        # must return the same pixel exactly — the clean projection invariant.
+        probe = self.call("util_actions", "ue_screen_to_world", x=200.0, y=200.0, distance=500.0)
+        self._skip_if_no_viewport(probe)
+        self.assertSuccess(probe)
+        self.assertEqual(len(probe["location"]), 3)
+        self.assertEqual(len(probe["direction"]), 3)
+
+        back = self.call("util_actions", "ue_world_to_screen", location=probe["location"])
+        self.assertSuccess(back)
+        self.assertTrue(back["visible"])
+        self.assertGreater(back["viewport_width"], 0)
+        self.assertAlmostEqual(back["x"], 200.0, delta=1.0)
+        self.assertAlmostEqual(back["y"], 200.0, delta=1.0)
+
+    def test_world_to_screen_rejects_bad_location(self):
+        r = self.call("util_actions", "ue_world_to_screen", location=[1.0, 2.0])
+        self.assertFalse(r.get("success"))
+
+    def test_screen_to_world_missing_param(self):
+        r = self.call("util_actions", "ue_screen_to_world", x=10.0)
+        self.assertFalse(r.get("success"))
+
     def test_is_in_pie(self):
         r = self.call("util_actions", "ue_is_in_pie")
         self.assertSuccess(r)

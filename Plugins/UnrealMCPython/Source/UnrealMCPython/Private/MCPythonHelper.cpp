@@ -70,6 +70,10 @@
 #include "AnimStateEntryNode.h"
 #include "AnimationStateMachineGraph.h"
 #include "Kismet/KismetMathLibrary.h"
+// Editor viewport projection
+#include "LevelEditorViewport.h"
+#include "EditorViewportClient.h"
+#include "SceneView.h"
 
 TArray<UObject*> UMCPythonHelper::GetAllEditedAssets()
 {
@@ -2768,6 +2772,83 @@ bool UMCPythonHelper::ConsumeSubmittedResult(FString& OutResult)
 void UMCPythonHelper::ClearSubmittedResult()
 {
     GMCPythonSubmittedResult.Reset();
+}
+
+// ─── Editor viewport projection ──────────────────────────────────────────────
+
+static FLevelEditorViewportClient* GetActiveLevelViewportClient()
+{
+    if (GCurrentLevelEditingViewportClient && GCurrentLevelEditingViewportClient->Viewport)
+        return GCurrentLevelEditingViewportClient;
+    if (GEditor)
+    {
+        for (FLevelEditorViewportClient* VC : GEditor->GetLevelViewportClients())
+            if (VC && VC->Viewport && VC->Viewport->GetSizeXY().X > 0)
+                return VC;
+    }
+    return nullptr;
+}
+
+static TArray<TSharedPtr<FJsonValue>> VectorToJsonArray(const FVector& V)
+{
+    TArray<TSharedPtr<FJsonValue>> A;
+    A.Add(MakeShareable(new FJsonValueNumber(V.X)));
+    A.Add(MakeShareable(new FJsonValueNumber(V.Y)));
+    A.Add(MakeShareable(new FJsonValueNumber(V.Z)));
+    return A;
+}
+
+FString UMCPythonHelper::WorldToScreen(FVector WorldLocation)
+{
+    FLevelEditorViewportClient* VC = GetActiveLevelViewportClient();
+    if (!VC)
+        return MakeJsonError(TEXT("No active level viewport."));
+
+    FSceneViewFamilyContext ViewFamily(FSceneViewFamily::ConstructionValues(
+        VC->Viewport, VC->GetScene(), VC->EngineShowFlags).SetRealtimeUpdate(VC->IsRealtime()));
+    FSceneView* View = VC->CalcSceneView(&ViewFamily);
+    if (!View)
+        return MakeJsonError(TEXT("Could not calculate the scene view."));
+
+    FVector2D Pixel;
+    const bool bInFront = View->WorldToPixel(WorldLocation, Pixel);
+    const FIntPoint Size = VC->Viewport->GetSizeXY();
+    const bool bOnScreen = bInFront && Pixel.X >= 0 && Pixel.Y >= 0 && Pixel.X <= Size.X && Pixel.Y <= Size.Y;
+
+    TSharedPtr<FJsonObject> R = MakeShareable(new FJsonObject());
+    R->SetBoolField(TEXT("success"), true);
+    R->SetNumberField(TEXT("x"), Pixel.X);
+    R->SetNumberField(TEXT("y"), Pixel.Y);
+    R->SetBoolField(TEXT("visible"), bInFront);      // in front of the camera (not clipped)
+    R->SetBoolField(TEXT("on_screen"), bOnScreen);   // also within the viewport rect
+    R->SetNumberField(TEXT("viewport_width"), Size.X);
+    R->SetNumberField(TEXT("viewport_height"), Size.Y);
+    return SerializeJsonObj(R);
+}
+
+FString UMCPythonHelper::ScreenToWorld(float ScreenX, float ScreenY, float Distance)
+{
+    FLevelEditorViewportClient* VC = GetActiveLevelViewportClient();
+    if (!VC)
+        return MakeJsonError(TEXT("No active level viewport."));
+
+    FSceneViewFamilyContext ViewFamily(FSceneViewFamily::ConstructionValues(
+        VC->Viewport, VC->GetScene(), VC->EngineShowFlags).SetRealtimeUpdate(VC->IsRealtime()));
+    FSceneView* View = VC->CalcSceneView(&ViewFamily);
+    if (!View)
+        return MakeJsonError(TEXT("Could not calculate the scene view."));
+
+    FVector Origin, Direction;
+    View->DeprojectFVector2D(FVector2D(ScreenX, ScreenY), Origin, Direction);
+    const FVector Location = Origin + Direction * Distance;
+
+    TSharedPtr<FJsonObject> R = MakeShareable(new FJsonObject());
+    R->SetBoolField(TEXT("success"), true);
+    R->SetArrayField(TEXT("location"), VectorToJsonArray(Location));
+    R->SetArrayField(TEXT("origin"), VectorToJsonArray(Origin));
+    R->SetArrayField(TEXT("direction"), VectorToJsonArray(Direction));
+    R->SetNumberField(TEXT("distance"), Distance);
+    return SerializeJsonObj(R);
 }
 
 // ─── AnimGraph authoring ─────────────────────────────────────────────────────
