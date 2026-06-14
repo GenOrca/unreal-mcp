@@ -315,11 +315,6 @@ public:
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString AddAnimGraphSequencePlayer(UAnimBlueprint* AnimBP, const FString& AnimSequencePath, bool bLinkToOutputPose);
 
-    /** Build a 2-state Idle<->Move locomotion state machine driven by a float speed variable. Returns JSON. */
-    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
-    static FString BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
-        const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold);
-
     /** Build an arbitrary state machine in the AnimGraph from a JSON spec
         ({states:[{name,anim?}], entry?, transitions:[{from,to,var?,op?,value?}]}). Returns JSON. */
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")

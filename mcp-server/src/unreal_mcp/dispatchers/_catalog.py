@@ -159,10 +159,6 @@ CATALOG = {
             'params': 'asset_path, spec',
             'doc': 'Builds an arbitrary AnimGraph state machine from a spec: states[{name,anim?}], entry?, transitions[{from,to,var?,op?,value?}].',
         },
-        'build_locomotion_state_machine': {
-            'params': "asset_path, idle_anim_path, move_anim_path, speed_variable='Speed', move_speed_threshold=10.0",
-            'doc': 'Builds an Idle<->Move state machine in the AnimGraph, driven by a float speed variable.',
-        },
         'create_anim_blueprint': {
             'params': "asset_path, skeleton_path, parent_class_path='/Script/Engine.AnimInstance'",
             'doc': 'Creates an Animation Blueprint bound to a Skeleton (parent defaults to AnimInstance).',

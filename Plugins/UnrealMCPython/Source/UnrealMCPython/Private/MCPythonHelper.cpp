@@ -3042,35 +3042,3 @@ FString UMCPythonHelper::BuildAnimStateMachine(UAnimBlueprint* AnimBP, const FSt
         return MakeJsonError(TEXT("Failed to parse spec JSON."));
     return BuildStateMachineFromSpec(AnimBP, Spec);
 }
-
-FString UMCPythonHelper::BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
-    const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold)
-{
-    if (!AnimBP)
-        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
-    if (FBlueprintEditorUtils::FindMemberVariableGuidByName(AnimBP, FName(*SpeedVarName)) == FGuid())
-        return MakeJsonError(FString::Printf(TEXT("Float variable '%s' not found on the AnimBlueprint. Add it first (blueprint add_variable)."), *SpeedVarName));
-
-    // Emit a 2-state spec and delegate to the shared core (no construction logic duplicated).
-    auto MakeState = [](const FString& Name, const FString& Anim) -> TSharedPtr<FJsonValue> {
-        TSharedPtr<FJsonObject> S = MakeShareable(new FJsonObject());
-        S->SetStringField(TEXT("name"), Name);
-        S->SetStringField(TEXT("anim"), Anim);
-        return MakeShareable(new FJsonValueObject(S));
-    };
-    auto MakeTrans = [&](const FString& From, const FString& To, const FString& Op) -> TSharedPtr<FJsonValue> {
-        TSharedPtr<FJsonObject> T = MakeShareable(new FJsonObject());
-        T->SetStringField(TEXT("from"), From);
-        T->SetStringField(TEXT("to"), To);
-        T->SetStringField(TEXT("var"), SpeedVarName);
-        T->SetStringField(TEXT("op"), Op);
-        T->SetNumberField(TEXT("value"), MoveSpeedThreshold);
-        return MakeShareable(new FJsonValueObject(T));
-    };
-    TSharedPtr<FJsonObject> Spec = MakeShareable(new FJsonObject());
-    Spec->SetStringField(TEXT("entry"), TEXT("Idle"));
-    Spec->SetArrayField(TEXT("states"), { MakeState(TEXT("Idle"), IdleAnimPath), MakeState(TEXT("Move"), MoveAnimPath) });
-    Spec->SetArrayField(TEXT("transitions"), { MakeTrans(TEXT("Idle"), TEXT("Move"), TEXT(">")),
-                                               MakeTrans(TEXT("Move"), TEXT("Idle"), TEXT("<")) });
-    return BuildStateMachineFromSpec(AnimBP, Spec);
-}

@@ -126,29 +126,6 @@ class TestAnimBlueprintActions(MCPTestCase):
                       asset_path=_ABP_PATH, anim_sequence_path=f"{TEST_ROOT}/NoSuchAnim_XYZ")
         self.assertFalse(r.get("success"))
 
-    def test_build_locomotion_state_machine(self):
-        for a in (_IDLE_ANIM, _WALK_ANIM):
-            if not unreal.EditorAssetLibrary.does_asset_exist(a):
-                self.skipTest("Engine tutorial locomotion anims not available")
-        self._make_abp()
-        r = self.call("anim_blueprint_actions", "ue_build_locomotion_state_machine",
-                      asset_path=_ABP_PATH, idle_anim_path=_IDLE_ANIM, move_anim_path=_WALK_ANIM,
-                      speed_variable="Speed", move_speed_threshold=10.0)
-        self.assertSuccess(r)
-        self.assertEqual(r["states"], ["Idle", "Move"])
-        self.assertEqual(r["transition_count"], 2)
-        # the state machine node must be present in the AnimGraph, wired off the Output Pose
-        self.assertIn("AnimGraphNode_StateMachine", self._anim_graph_node_classes())
-        # rules should have been built (no fallbacks); a clean build reports no warnings
-        self.assertEqual(r.get("warnings", []), [])
-
-    def test_build_locomotion_rejects_missing_anim(self):
-        self._make_abp()
-        r = self.call("anim_blueprint_actions", "ue_build_locomotion_state_machine",
-                      asset_path=_ABP_PATH, idle_anim_path=_IDLE_ANIM,
-                      move_anim_path=f"{TEST_ROOT}/NoSuchAnim_XYZ")
-        self.assertFalse(r.get("success"))
-
     # ── generic spec-driven state machine ─────────────────────────────────────────
 
     def test_build_generic_three_state_machine(self):
@@ -190,4 +167,11 @@ class TestAnimBlueprintActions(MCPTestCase):
         self._make_abp()
         r = self.call("anim_blueprint_actions", "ue_build_anim_state_machine",
                       asset_path=_ABP_PATH, spec={"states": []})
+        self.assertFalse(r.get("success"))
+
+    def test_build_generic_rejects_missing_anim(self):
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_build_anim_state_machine",
+                      asset_path=_ABP_PATH,
+                      spec={"states": [{"name": "Idle", "anim": f"{TEST_ROOT}/NoSuchAnim_XYZ"}]})
         self.assertFalse(r.get("success"))
