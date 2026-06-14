@@ -57,6 +57,19 @@
 #include "UObject/TextProperty.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+// AnimGraph authoring (editor-only AnimGraph module)
+#include "Animation/AnimBlueprint.h"
+#include "Animation/AnimSequence.h"
+#include "AnimGraphNode_StateMachine.h"
+#include "AnimGraphNode_SequencePlayer.h"
+#include "AnimGraphNode_Root.h"
+#include "AnimGraphNode_StateResult.h"
+#include "AnimGraphNode_TransitionResult.h"
+#include "AnimStateNode.h"
+#include "AnimStateTransitionNode.h"
+#include "AnimStateEntryNode.h"
+#include "AnimationStateMachineGraph.h"
+#include "Kismet/KismetMathLibrary.h"
 
 TArray<UObject*> UMCPythonHelper::GetAllEditedAssets()
 {
@@ -2755,4 +2768,213 @@ bool UMCPythonHelper::ConsumeSubmittedResult(FString& OutResult)
 void UMCPythonHelper::ClearSubmittedResult()
 {
     GMCPythonSubmittedResult.Reset();
+}
+
+// ─── AnimGraph authoring ─────────────────────────────────────────────────────
+
+static UEdGraphPin* FirstVisiblePin(UEdGraphNode* Node, EEdGraphPinDirection Dir)
+{
+    if (!Node) return nullptr;
+    for (UEdGraphPin* P : Node->Pins)
+        if (P && !P->bHidden && P->Direction == Dir)
+            return P;
+    return nullptr;
+}
+
+template <typename T>
+static T* FindNodeOfType(UEdGraph* Graph)
+{
+    if (!Graph) return nullptr;
+    for (UEdGraphNode* N : Graph->Nodes)
+        if (T* Hit = Cast<T>(N))
+            return Hit;
+    return nullptr;
+}
+
+// Add a Sequence Player playing Seq into Graph and link its pose output to PoseSinkInputPin (if given).
+static UAnimGraphNode_SequencePlayer* SpawnSequencePlayer(UEdGraph* Graph, UAnimSequence* Seq,
+    int32 X, int32 Y, UEdGraphPin* PoseSinkInputPin)
+{
+    FGraphNodeCreator<UAnimGraphNode_SequencePlayer> Creator(*Graph);
+    UAnimGraphNode_SequencePlayer* Node = Creator.CreateNode(false);
+    Node->Node.SetSequence(Seq);
+    Node->Node.SetLoopAnimation(true);
+    Node->NodePosX = X;
+    Node->NodePosY = Y;
+    Creator.Finalize();
+    if (PoseSinkInputPin)
+    {
+        if (UEdGraphPin* PoseOut = FirstVisiblePin(Node, EGPD_Output))
+            PoseOut->MakeLinkTo(PoseSinkInputPin);
+    }
+    return Node;
+}
+
+FString UMCPythonHelper::AddAnimGraphSequencePlayer(UAnimBlueprint* AnimBP,
+    const FString& AnimSequencePath, bool bLinkToOutputPose)
+{
+    if (!AnimBP)
+        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
+
+    UEdGraph* AnimGraph = FindGraphByName(AnimBP, TEXT("AnimGraph"));
+    if (!AnimGraph)
+        return MakeJsonError(TEXT("AnimGraph not found on this AnimBlueprint."));
+
+    UAnimSequence* Seq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *AnimSequencePath));
+    if (!Seq)
+        return MakeJsonError(FString::Printf(TEXT("AnimSequence not found: %s"), *AnimSequencePath));
+
+    UAnimGraphNode_Root* Root = FindNodeOfType<UAnimGraphNode_Root>(AnimGraph);
+    UEdGraphPin* RootIn = Root ? FindPinByName(Root, TEXT("Result"), EGPD_Input) : nullptr;
+
+    UAnimGraphNode_SequencePlayer* Player =
+        SpawnSequencePlayer(AnimGraph, Seq, -400, 0, (bLinkToOutputPose && RootIn) ? RootIn : nullptr);
+
+    FKismetEditorUtilities::CompileBlueprint(AnimBP);
+
+    TSharedPtr<FJsonObject> R = MakeShareable(new FJsonObject());
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("node_name"), Player->GetName());
+    R->SetStringField(TEXT("sequence"), Seq->GetPathName());
+    R->SetBoolField(TEXT("linked_to_output"), bLinkToOutputPose && RootIn != nullptr);
+    return SerializeJsonObj(R);
+}
+
+// Populate a transition's rule graph with: Get(SpeedVar) (Greater|Less) Threshold -> bCanEnterTransition.
+static bool BuildSpeedTransitionRule(UEdGraph* TransitionGraph, const FString& SpeedVar,
+    float Threshold, bool bGreater)
+{
+    UAnimGraphNode_TransitionResult* Result = FindNodeOfType<UAnimGraphNode_TransitionResult>(TransitionGraph);
+    if (!Result) return false;
+    UEdGraphPin* CanEnter = FindPinByName(Result, TEXT("bCanEnterTransition"), EGPD_Input);
+    if (!CanEnter) return false;
+
+    FGraphNodeCreator<UK2Node_VariableGet> GetCreator(*TransitionGraph);
+    UK2Node_VariableGet* GetNode = GetCreator.CreateNode(false);
+    GetNode->VariableReference.SetSelfMember(FName(*SpeedVar));
+    GetNode->NodePosX = -500;
+    GetCreator.Finalize();
+
+    UFunction* CmpFunc = UKismetMathLibrary::StaticClass()->FindFunctionByName(
+        bGreater ? FName(TEXT("Greater_DoubleDouble")) : FName(TEXT("Less_DoubleDouble")));
+    if (!CmpFunc) return false;
+    FGraphNodeCreator<UK2Node_CallFunction> CmpCreator(*TransitionGraph);
+    UK2Node_CallFunction* CmpNode = CmpCreator.CreateNode(false);
+    CmpNode->SetFromFunction(CmpFunc);
+    CmpNode->NodePosX = -250;
+    CmpCreator.Finalize();
+
+    UEdGraphPin* SpeedOut = FirstVisiblePin(GetNode, EGPD_Output);
+    UEdGraphPin* PinA = FindPinByName(CmpNode, TEXT("A"), EGPD_Input);
+    UEdGraphPin* PinB = FindPinByName(CmpNode, TEXT("B"), EGPD_Input);
+    UEdGraphPin* CmpRet = FindPinByName(CmpNode, TEXT("ReturnValue"), EGPD_Output);
+    if (SpeedOut && PinA) SpeedOut->MakeLinkTo(PinA);
+    if (PinB) PinB->DefaultValue = FString::SanitizeFloat(Threshold);
+    if (CmpRet) CmpRet->MakeLinkTo(CanEnter);
+    return SpeedOut && PinA && CmpRet;
+}
+
+FString UMCPythonHelper::BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
+    const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold)
+{
+    if (!AnimBP)
+        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
+
+    UEdGraph* AnimGraph = FindGraphByName(AnimBP, TEXT("AnimGraph"));
+    if (!AnimGraph)
+        return MakeJsonError(TEXT("AnimGraph not found on this AnimBlueprint."));
+
+    UAnimSequence* IdleSeq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *IdleAnimPath));
+    UAnimSequence* MoveSeq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *MoveAnimPath));
+    if (!IdleSeq) return MakeJsonError(FString::Printf(TEXT("Idle AnimSequence not found: %s"), *IdleAnimPath));
+    if (!MoveSeq) return MakeJsonError(FString::Printf(TEXT("Move AnimSequence not found: %s"), *MoveAnimPath));
+
+    // Verify the speed variable exists on the blueprint.
+    if (FBlueprintEditorUtils::FindMemberVariableGuidByName(AnimBP, FName(*SpeedVarName)) == FGuid())
+        return MakeJsonError(FString::Printf(TEXT("Float variable '%s' not found on the AnimBlueprint. Add it first (blueprint add_variable)."), *SpeedVarName));
+
+    TArray<TSharedPtr<FJsonValue>> Warnings;
+
+    // 1. State machine node, linked to the Output Pose.
+    UAnimGraphNode_Root* Root = FindNodeOfType<UAnimGraphNode_Root>(AnimGraph);
+    UEdGraphPin* RootIn = Root ? FindPinByName(Root, TEXT("Result"), EGPD_Input) : nullptr;
+
+    FGraphNodeCreator<UAnimGraphNode_StateMachine> SMCreator(*AnimGraph);
+    UAnimGraphNode_StateMachine* SMNode = SMCreator.CreateNode(false);
+    SMNode->NodePosX = -350;
+    SMCreator.Finalize();
+    if (RootIn)
+    {
+        if (UEdGraphPin* SMOut = FirstVisiblePin(SMNode, EGPD_Output))
+        {
+            RootIn->BreakAllPinLinks();
+            SMOut->MakeLinkTo(RootIn);
+        }
+    }
+
+    TArray<UEdGraph*> Subs = SMNode->GetSubGraphs();
+    UEdGraph* SMGraph = Subs.Num() ? Subs[0] : nullptr;
+    if (!SMGraph)
+        return MakeJsonError(TEXT("State machine graph was not created."));
+
+    // 2. Two states, each with a looping sequence player wired to the state result.
+    auto MakeState = [&](const FString& StateName, UAnimSequence* Seq) -> UAnimStateNode*
+    {
+        FGraphNodeCreator<UAnimStateNode> Creator(*SMGraph);
+        UAnimStateNode* State = Creator.CreateNode(false);
+        Creator.Finalize();
+        if (UEdGraph* Bound = State->GetBoundGraph())
+            FBlueprintEditorUtils::RenameGraph(Bound, StateName);
+        if (UAnimGraphNode_StateResult* SR = State->GetResultNodeInsideState())
+        {
+            UEdGraphPin* SRIn = FindPinByName(SR, TEXT("Result"), EGPD_Input);
+            SpawnSequencePlayer(State->GetBoundGraph(), Seq, -400, 0, SRIn);
+        }
+        return State;
+    };
+
+    UAnimStateNode* IdleState = MakeState(TEXT("Idle"), IdleSeq);
+    UAnimStateNode* MoveState = MakeState(TEXT("Move"), MoveSeq);
+    IdleState->NodePosX = -100; IdleState->NodePosY = 0;
+    MoveState->NodePosX = 300;  MoveState->NodePosY = 0;
+
+    // 3. Entry -> Idle.
+    if (UAnimStateEntryNode* Entry = FindNodeOfType<UAnimStateEntryNode>(SMGraph))
+    {
+        UEdGraphPin* EntryOut = FirstVisiblePin(Entry, EGPD_Output);
+        UEdGraphPin* IdleIn = FirstVisiblePin(IdleState, EGPD_Input);
+        if (EntryOut && IdleIn) EntryOut->MakeLinkTo(IdleIn);
+        else Warnings.Add(MakeShareable(new FJsonValueString(TEXT("Could not connect entry node to Idle state."))));
+    }
+
+    // 4. Transitions Idle->Move (Speed > T) and Move->Idle (Speed < T), with speed-driven rules.
+    auto MakeTransition = [&](UAnimStateNode* From, UAnimStateNode* To, bool bGreater)
+    {
+        FGraphNodeCreator<UAnimStateTransitionNode> Creator(*SMGraph);
+        UAnimStateTransitionNode* Trans = Creator.CreateNode(false);
+        Creator.Finalize();
+        Trans->CreateConnections(From, To);
+        if (!BuildSpeedTransitionRule(Trans->GetBoundGraph(), SpeedVarName, MoveSpeedThreshold, bGreater))
+            Warnings.Add(MakeShareable(new FJsonValueString(
+                FString::Printf(TEXT("Transition %s rule was left at default."), bGreater ? TEXT("Idle->Move") : TEXT("Move->Idle")))));
+    };
+    MakeTransition(IdleState, MoveState, /*bGreater*/ true);
+    MakeTransition(MoveState, IdleState, /*bGreater*/ false);
+
+    // 5. Compile and report.
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
+    FKismetEditorUtilities::CompileBlueprint(AnimBP);
+
+    TSharedPtr<FJsonObject> R = MakeShareable(new FJsonObject());
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("state_machine"), SMNode->GetName());
+    TArray<TSharedPtr<FJsonValue>> States;
+    States.Add(MakeShareable(new FJsonValueString(TEXT("Idle"))));
+    States.Add(MakeShareable(new FJsonValueString(TEXT("Move"))));
+    R->SetArrayField(TEXT("states"), States);
+    R->SetNumberField(TEXT("transition_count"), 2);
+    R->SetStringField(TEXT("speed_variable"), SpeedVarName);
+    R->SetNumberField(TEXT("move_speed_threshold"), MoveSpeedThreshold);
+    R->SetArrayField(TEXT("warnings"), Warnings);
+    return SerializeJsonObj(R);
 }

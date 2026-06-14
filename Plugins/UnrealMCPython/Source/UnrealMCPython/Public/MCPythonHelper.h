@@ -304,4 +304,19 @@ public:
 
     /** C++ side: drop any stale submitted result before executing a call. */
     static void ClearSubmittedResult();
+
+    // ─── AnimGraph authoring (editor-only AnimGraph module) ───────────────────────
+    // AnimGraph node classes (UAnimGraphNode_*) live in the editor-only AnimGraph
+    // module and are not exposed to Python, and UAnimationGraph::Nodes is protected,
+    // so these operations need C++. Read-only AnimGraph introspection is already
+    // served by GetBlueprintGraphInfo (graph_name="AnimGraph").
+
+    /** Add a Sequence Player node to the AnimGraph, optionally linked to the Output Pose. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString AddAnimGraphSequencePlayer(UAnimBlueprint* AnimBP, const FString& AnimSequencePath, bool bLinkToOutputPose);
+
+    /** Build a 2-state Idle<->Move locomotion state machine driven by a float speed variable. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
+        const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold);
 };

@@ -10,10 +10,10 @@ generic graph work is intentionally NOT duplicated here:
   - read AnimGraph     -> use `blueprint get_blueprint_graph_info` with graph_name="AnimGraph"
   - add/remove vars    -> use `blueprint add_variable` / `set_variable_flags`
 
-AnimGraph node *authoring* (sequence players, state machines, blend nodes) lives in
-the editor-only AnimGraph C++ module and is not exposed to Python; it requires a
-dedicated C++ helper (see ue_add_anim_graph_sequence_player) and is the only part of
-this domain backed by MCPythonHelper.
+AnimGraph node *authoring* (sequence players, state machines) lives in the editor-only
+AnimGraph C++ module and is not exposed to Python (UAnimationGraph::Nodes is protected),
+so ue_add_anim_graph_sequence_player and ue_build_locomotion_state_machine are backed by
+dedicated MCPythonHelper C++ UFUNCTIONs.
 """
 import unreal
 import json
@@ -97,5 +97,54 @@ def ue_get_anim_blueprint_info(asset_path: str = None) -> str:
             "target_skeleton": skeleton.get_path_name() if skeleton else None,
             "graphs": graphs,
         })
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# ─── AnimGraph node authoring (backed by the MCPythonHelper C++ AnimGraph helpers) ──
+
+def ue_add_anim_graph_sequence_player(asset_path: str = None, anim_sequence_path: str = None,
+                                      link_to_output_pose: bool = True) -> str:
+    """Adds a looping Sequence Player to the AnimGraph, optionally wired to the Output Pose."""
+    if asset_path is None or anim_sequence_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, anim_sequence_path."})
+    try:
+        bp = _load_anim_blueprint(asset_path)
+        if not unreal.EditorAssetLibrary.does_asset_exist(anim_sequence_path):
+            return json.dumps({"success": False, "message": f"AnimSequence not found: {anim_sequence_path}"})
+        result_json = unreal.MCPythonHelper.add_anim_graph_sequence_player(
+            bp, anim_sequence_path, link_to_output_pose)
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return result_json
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def _ensure_float_variable(bp, var_name: str):
+    """Ensure a float (real) member variable exists on the blueprint; no-op if already present."""
+    bel = unreal.BlueprintEditorLibrary
+    pin = bel.get_basic_type_by_name(unreal.Name("real"))
+    bel.add_member_variable(bp, unreal.Name(var_name), pin)  # returns False if it already exists
+    bel.compile_blueprint(bp)
+
+
+def ue_build_locomotion_state_machine(asset_path: str = None, idle_anim_path: str = None,
+                                      move_anim_path: str = None, speed_variable: str = "Speed",
+                                      move_speed_threshold: float = 10.0) -> str:
+    """Builds an Idle<->Move state machine in the AnimGraph, driven by a float speed variable."""
+    if asset_path is None or idle_anim_path is None or move_anim_path is None:
+        return json.dumps({"success": False,
+                           "message": "Required parameters: asset_path, idle_anim_path, move_anim_path."})
+    try:
+        bp = _load_anim_blueprint(asset_path)
+        for p in (idle_anim_path, move_anim_path):
+            if not unreal.EditorAssetLibrary.does_asset_exist(p):
+                return json.dumps({"success": False, "message": f"AnimSequence not found: {p}"})
+        # The C++ builder requires the speed variable to exist; create it if missing.
+        _ensure_float_variable(bp, speed_variable)
+        result_json = unreal.MCPythonHelper.build_locomotion_state_machine(
+            bp, idle_anim_path, move_anim_path, speed_variable, float(move_speed_threshold))
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return result_json
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})

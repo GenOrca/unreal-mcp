@@ -151,6 +151,14 @@ CATALOG = {
         },
     },
     'anim_blueprint': {
+        'add_anim_graph_sequence_player': {
+            'params': 'asset_path, anim_sequence_path, link_to_output_pose=True',
+            'doc': 'Adds a looping Sequence Player to the AnimGraph, optionally wired to the Output Pose.',
+        },
+        'build_locomotion_state_machine': {
+            'params': "asset_path, idle_anim_path, move_anim_path, speed_variable='Speed', move_speed_threshold=10.0",
+            'doc': 'Builds an Idle<->Move state machine in the AnimGraph, driven by a float speed variable.',
+        },
         'create_anim_blueprint': {
             'params': "asset_path, skeleton_path, parent_class_path='/Script/Engine.AnimInstance'",
             'doc': 'Creates an Animation Blueprint bound to a Skeleton (parent defaults to AnimInstance).',

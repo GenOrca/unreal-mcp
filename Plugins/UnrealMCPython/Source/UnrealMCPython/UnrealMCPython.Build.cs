@@ -57,6 +57,8 @@ public class UnrealMCPython : ModuleRules
 				"LiveCoding",
 				"UMG",
 				"UMGEditor",
+				"AnimGraph",
+				"AnimGraphRuntime",
 			}
 			);
 		

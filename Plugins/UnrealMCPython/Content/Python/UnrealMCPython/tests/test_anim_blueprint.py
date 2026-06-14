@@ -5,6 +5,9 @@ from UnrealMCPython.tests.base import MCPTestCase, TEST_ROOT
 # used as a deliberately-wrong (non-Skeleton) asset for the type-guard test.
 _SKELETON = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/TutorialTPP_Skeleton"
 _NON_SKELETON = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/TutorialTPP"
+# Two AnimSequences that ship on the TutorialTPP skeleton — used for the AnimGraph builders.
+_IDLE_ANIM = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/Tutorial_Idle"
+_WALK_ANIM = "/Engine/Tutorial/SubEditors/TutorialAssets/Character/Tutorial_Walk_Fwd"
 _ABP_PATH = f"{TEST_ROOT}/MCP_TestAnimBP"
 
 
@@ -92,3 +95,57 @@ class TestAnimBlueprintActions(MCPTestCase):
         r = self.call("anim_blueprint_actions", "ue_get_anim_blueprint_info", asset_path=_SKELETON)
         self.assertFalse(r.get("success"))
         self.assertIn("AnimBlueprint", r.get("message", ""))
+
+    # ── AnimGraph node authoring (C++ helper) ─────────────────────────────────────
+
+    def _make_abp(self):
+        r = self.call("anim_blueprint_actions", "ue_create_anim_blueprint",
+                      asset_path=_ABP_PATH, skeleton_path=_SKELETON)
+        self.assertSuccess(r)
+
+    def _anim_graph_node_classes(self):
+        info = self.call("blueprint_actions", "ue_get_blueprint_graph_info",
+                         asset_path=_ABP_PATH, graph_name="AnimGraph")
+        self.assertSuccess(info)
+        return [n["node_class"] for n in info["nodes"]]
+
+    def test_add_sequence_player_links_to_output(self):
+        if not unreal.EditorAssetLibrary.does_asset_exist(_IDLE_ANIM):
+            self.skipTest("Engine Tutorial_Idle anim not available")
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_add_anim_graph_sequence_player",
+                      asset_path=_ABP_PATH, anim_sequence_path=_IDLE_ANIM, link_to_output_pose=True)
+        self.assertSuccess(r)
+        self.assertTrue(r["linked_to_output"])
+        # the node must actually exist in the AnimGraph
+        self.assertIn("AnimGraphNode_SequencePlayer", self._anim_graph_node_classes())
+
+    def test_add_sequence_player_rejects_missing_anim(self):
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_add_anim_graph_sequence_player",
+                      asset_path=_ABP_PATH, anim_sequence_path=f"{TEST_ROOT}/NoSuchAnim_XYZ")
+        self.assertFalse(r.get("success"))
+
+    def test_build_locomotion_state_machine(self):
+        for a in (_IDLE_ANIM, _WALK_ANIM):
+            if not unreal.EditorAssetLibrary.does_asset_exist(a):
+                self.skipTest("Engine tutorial locomotion anims not available")
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_build_locomotion_state_machine",
+                      asset_path=_ABP_PATH, idle_anim_path=_IDLE_ANIM, move_anim_path=_WALK_ANIM,
+                      speed_variable="Speed", move_speed_threshold=10.0)
+        self.assertSuccess(r)
+        self.assertEqual(r["states"], ["Idle", "Move"])
+        self.assertEqual(r["transition_count"], 2)
+        self.assertEqual(r["speed_variable"], "Speed")
+        # the state machine node must be present in the AnimGraph, wired off the Output Pose
+        self.assertIn("AnimGraphNode_StateMachine", self._anim_graph_node_classes())
+        # rules should have been built (no fallbacks); a clean build reports no warnings
+        self.assertEqual(r.get("warnings", []), [])
+
+    def test_build_locomotion_rejects_missing_anim(self):
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_build_locomotion_state_machine",
+                      asset_path=_ABP_PATH, idle_anim_path=_IDLE_ANIM,
+                      move_anim_path=f"{TEST_ROOT}/NoSuchAnim_XYZ")
+        self.assertFalse(r.get("success"))
