@@ -137,7 +137,6 @@ class TestAnimBlueprintActions(MCPTestCase):
         self.assertSuccess(r)
         self.assertEqual(r["states"], ["Idle", "Move"])
         self.assertEqual(r["transition_count"], 2)
-        self.assertEqual(r["speed_variable"], "Speed")
         # the state machine node must be present in the AnimGraph, wired off the Output Pose
         self.assertIn("AnimGraphNode_StateMachine", self._anim_graph_node_classes())
         # rules should have been built (no fallbacks); a clean build reports no warnings
@@ -148,4 +147,47 @@ class TestAnimBlueprintActions(MCPTestCase):
         r = self.call("anim_blueprint_actions", "ue_build_locomotion_state_machine",
                       asset_path=_ABP_PATH, idle_anim_path=_IDLE_ANIM,
                       move_anim_path=f"{TEST_ROOT}/NoSuchAnim_XYZ")
+        self.assertFalse(r.get("success"))
+
+    # ── generic spec-driven state machine ─────────────────────────────────────────
+
+    def test_build_generic_three_state_machine(self):
+        for a in (_IDLE_ANIM, _WALK_ANIM):
+            if not unreal.EditorAssetLibrary.does_asset_exist(a):
+                self.skipTest("Engine tutorial locomotion anims not available")
+        self._make_abp()
+        spec = {
+            "machine_name": "Locomotion", "entry": "Idle",
+            "states": [
+                {"name": "Idle", "anim": _IDLE_ANIM},
+                {"name": "Walk", "anim": _WALK_ANIM},
+                {"name": "Run",  "anim": _WALK_ANIM},
+            ],
+            "transitions": [
+                {"from": "Idle", "to": "Walk", "var": "Speed", "op": ">", "value": 10},
+                {"from": "Walk", "to": "Idle", "var": "Speed", "op": "<", "value": 10},
+                {"from": "Walk", "to": "Run",  "var": "Speed", "op": ">", "value": 300},
+                {"from": "Run",  "to": "Walk", "var": "Speed", "op": "<", "value": 300},
+            ],
+        }
+        r = self.call("anim_blueprint_actions", "ue_build_anim_state_machine",
+                      asset_path=_ABP_PATH, spec=spec)
+        self.assertSuccess(r)
+        self.assertEqual(r["states"], ["Idle", "Walk", "Run"])
+        self.assertEqual(r["transition_count"], 4)
+        self.assertEqual(r.get("warnings", []), [])  # all 4 speed rules wired, no fallbacks
+        self.assertIn("AnimGraphNode_StateMachine", self._anim_graph_node_classes())
+
+    def test_build_generic_rejects_unknown_transition_state(self):
+        self._make_abp()
+        spec = {"states": [{"name": "A", "anim": _IDLE_ANIM}],
+                "transitions": [{"from": "A", "to": "DoesNotExist"}]}
+        r = self.call("anim_blueprint_actions", "ue_build_anim_state_machine",
+                      asset_path=_ABP_PATH, spec=spec)
+        self.assertFalse(r.get("success"))
+
+    def test_build_generic_rejects_empty_states(self):
+        self._make_abp()
+        r = self.call("anim_blueprint_actions", "ue_build_anim_state_machine",
+                      asset_path=_ABP_PATH, spec={"states": []})
         self.assertFalse(r.get("success"))

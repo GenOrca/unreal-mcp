@@ -319,4 +319,9 @@ public:
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
         const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold);
+
+    /** Build an arbitrary state machine in the AnimGraph from a JSON spec
+        ({states:[{name,anim?}], entry?, transitions:[{from,to,var?,op?,value?}]}). Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString BuildAnimStateMachine(UAnimBlueprint* AnimBP, const FString& SpecJson);
 };

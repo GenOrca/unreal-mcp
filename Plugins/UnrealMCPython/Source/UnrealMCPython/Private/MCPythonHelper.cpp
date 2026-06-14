@@ -2841,61 +2841,88 @@ FString UMCPythonHelper::AddAnimGraphSequencePlayer(UAnimBlueprint* AnimBP,
 }
 
 // Populate a transition's rule graph with: Get(SpeedVar) (Greater|Less) Threshold -> bCanEnterTransition.
-static bool BuildSpeedTransitionRule(UEdGraph* TransitionGraph, const FString& SpeedVar,
-    float Threshold, bool bGreater)
+// Map a comparison operator string to a UKismetMathLibrary double-comparison UFunction.
+static UFunction* FindFloatCompareFunc(const FString& Op)
+{
+    FName FnName;
+    if (Op == TEXT(">"))       FnName = FName(TEXT("Greater_DoubleDouble"));
+    else if (Op == TEXT("<"))  FnName = FName(TEXT("Less_DoubleDouble"));
+    else if (Op == TEXT(">=")) FnName = FName(TEXT("GreaterEqual_DoubleDouble"));
+    else if (Op == TEXT("<=")) FnName = FName(TEXT("LessEqual_DoubleDouble"));
+    else if (Op == TEXT("==")) FnName = FName(TEXT("EqualEqual_DoubleDouble"));
+    else return nullptr;
+    return UKismetMathLibrary::StaticClass()->FindFunctionByName(FnName);
+}
+
+// Populate a transition rule graph with: Get(Var) <Op> Value -> bCanEnterTransition.
+static bool BuildFloatTransitionRule(UEdGraph* TransitionGraph, const FString& Var, const FString& Op, float Value)
 {
     UAnimGraphNode_TransitionResult* Result = FindNodeOfType<UAnimGraphNode_TransitionResult>(TransitionGraph);
     if (!Result) return false;
     UEdGraphPin* CanEnter = FindPinByName(Result, TEXT("bCanEnterTransition"), EGPD_Input);
     if (!CanEnter) return false;
+    UFunction* CmpFunc = FindFloatCompareFunc(Op);
+    if (!CmpFunc) return false;
 
     FGraphNodeCreator<UK2Node_VariableGet> GetCreator(*TransitionGraph);
     UK2Node_VariableGet* GetNode = GetCreator.CreateNode(false);
-    GetNode->VariableReference.SetSelfMember(FName(*SpeedVar));
+    GetNode->VariableReference.SetSelfMember(FName(*Var));
     GetNode->NodePosX = -500;
     GetCreator.Finalize();
 
-    UFunction* CmpFunc = UKismetMathLibrary::StaticClass()->FindFunctionByName(
-        bGreater ? FName(TEXT("Greater_DoubleDouble")) : FName(TEXT("Less_DoubleDouble")));
-    if (!CmpFunc) return false;
     FGraphNodeCreator<UK2Node_CallFunction> CmpCreator(*TransitionGraph);
     UK2Node_CallFunction* CmpNode = CmpCreator.CreateNode(false);
     CmpNode->SetFromFunction(CmpFunc);
     CmpNode->NodePosX = -250;
     CmpCreator.Finalize();
 
-    UEdGraphPin* SpeedOut = FirstVisiblePin(GetNode, EGPD_Output);
+    UEdGraphPin* VarOut = FirstVisiblePin(GetNode, EGPD_Output);
     UEdGraphPin* PinA = FindPinByName(CmpNode, TEXT("A"), EGPD_Input);
     UEdGraphPin* PinB = FindPinByName(CmpNode, TEXT("B"), EGPD_Input);
     UEdGraphPin* CmpRet = FindPinByName(CmpNode, TEXT("ReturnValue"), EGPD_Output);
-    if (SpeedOut && PinA) SpeedOut->MakeLinkTo(PinA);
-    if (PinB) PinB->DefaultValue = FString::SanitizeFloat(Threshold);
+    if (VarOut && PinA) VarOut->MakeLinkTo(PinA);
+    if (PinB) PinB->DefaultValue = FString::SanitizeFloat(Value);
     if (CmpRet) CmpRet->MakeLinkTo(CanEnter);
-    return SpeedOut && PinA && CmpRet;
+    return VarOut && PinA && CmpRet;
 }
 
-FString UMCPythonHelper::BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
-    const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold)
+// Core builder shared by the generic and the locomotion-convenience UFUNCTIONs.
+// Spec: { machine_name?, entry?, states:[{name, anim?}], transitions:[{from,to,var?,op?,value?}] }
+static FString BuildStateMachineFromSpec(UAnimBlueprint* AnimBP, const TSharedPtr<FJsonObject>& Spec)
 {
-    if (!AnimBP)
-        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
-
     UEdGraph* AnimGraph = FindGraphByName(AnimBP, TEXT("AnimGraph"));
     if (!AnimGraph)
         return MakeJsonError(TEXT("AnimGraph not found on this AnimBlueprint."));
 
-    UAnimSequence* IdleSeq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *IdleAnimPath));
-    UAnimSequence* MoveSeq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *MoveAnimPath));
-    if (!IdleSeq) return MakeJsonError(FString::Printf(TEXT("Idle AnimSequence not found: %s"), *IdleAnimPath));
-    if (!MoveSeq) return MakeJsonError(FString::Printf(TEXT("Move AnimSequence not found: %s"), *MoveAnimPath));
+    const TArray<TSharedPtr<FJsonValue>>* StatesJson = nullptr;
+    if (!Spec->TryGetArrayField(TEXT("states"), StatesJson) || StatesJson->Num() == 0)
+        return MakeJsonError(TEXT("Spec must contain a non-empty 'states' array."));
 
-    // Verify the speed variable exists on the blueprint.
-    if (FBlueprintEditorUtils::FindMemberVariableGuidByName(AnimBP, FName(*SpeedVarName)) == FGuid())
-        return MakeJsonError(FString::Printf(TEXT("Float variable '%s' not found on the AnimBlueprint. Add it first (blueprint add_variable)."), *SpeedVarName));
+    // Resolve + validate every state's anim up front (fail before mutating the graph).
+    struct FStateDef { FString Name; UAnimSequence* Seq; };
+    TArray<FStateDef> StateDefs;
+    for (const TSharedPtr<FJsonValue>& SV : *StatesJson)
+    {
+        const TSharedPtr<FJsonObject> SO = SV->AsObject();
+        if (!SO.IsValid())
+            return MakeJsonError(TEXT("Each entry in 'states' must be an object."));
+        FString Name, AnimPath;
+        if (!SO->TryGetStringField(TEXT("name"), Name) || Name.IsEmpty())
+            return MakeJsonError(TEXT("Each state needs a non-empty 'name'."));
+        SO->TryGetStringField(TEXT("anim"), AnimPath);
+        UAnimSequence* Seq = nullptr;
+        if (!AnimPath.IsEmpty())
+        {
+            Seq = Cast<UAnimSequence>(StaticLoadObject(UAnimSequence::StaticClass(), nullptr, *AnimPath));
+            if (!Seq)
+                return MakeJsonError(FString::Printf(TEXT("State '%s': AnimSequence not found: %s"), *Name, *AnimPath));
+        }
+        StateDefs.Add({ Name, Seq });
+    }
 
     TArray<TSharedPtr<FJsonValue>> Warnings;
 
-    // 1. State machine node, linked to the Output Pose.
+    // State machine node, linked to the Output Pose.
     UAnimGraphNode_Root* Root = FindNodeOfType<UAnimGraphNode_Root>(AnimGraph);
     UEdGraphPin* RootIn = Root ? FindPinByName(Root, TEXT("Result"), EGPD_Input) : nullptr;
 
@@ -2917,64 +2944,133 @@ FString UMCPythonHelper::BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, con
     if (!SMGraph)
         return MakeJsonError(TEXT("State machine graph was not created."));
 
-    // 2. Two states, each with a looping sequence player wired to the state result.
-    auto MakeState = [&](const FString& StateName, UAnimSequence* Seq) -> UAnimStateNode*
+    // States — each with a looping sequence player wired to the state result.
+    TMap<FString, UAnimStateNode*> StateByName;
+    int32 Col = 0;
+    for (const FStateDef& SD : StateDefs)
     {
         FGraphNodeCreator<UAnimStateNode> Creator(*SMGraph);
         UAnimStateNode* State = Creator.CreateNode(false);
         Creator.Finalize();
         if (UEdGraph* Bound = State->GetBoundGraph())
-            FBlueprintEditorUtils::RenameGraph(Bound, StateName);
-        if (UAnimGraphNode_StateResult* SR = State->GetResultNodeInsideState())
+            FBlueprintEditorUtils::RenameGraph(Bound, SD.Name);
+        if (SD.Seq)
         {
-            UEdGraphPin* SRIn = FindPinByName(SR, TEXT("Result"), EGPD_Input);
-            SpawnSequencePlayer(State->GetBoundGraph(), Seq, -400, 0, SRIn);
+            if (UAnimGraphNode_StateResult* SR = State->GetResultNodeInsideState())
+            {
+                UEdGraphPin* SRIn = FindPinByName(SR, TEXT("Result"), EGPD_Input);
+                SpawnSequencePlayer(State->GetBoundGraph(), SD.Seq, -400, 0, SRIn);
+            }
         }
-        return State;
-    };
+        State->NodePosX = Col * 350;
+        State->NodePosY = 0;
+        ++Col;
+        StateByName.Add(SD.Name, State);
+    }
 
-    UAnimStateNode* IdleState = MakeState(TEXT("Idle"), IdleSeq);
-    UAnimStateNode* MoveState = MakeState(TEXT("Move"), MoveSeq);
-    IdleState->NodePosX = -100; IdleState->NodePosY = 0;
-    MoveState->NodePosX = 300;  MoveState->NodePosY = 0;
-
-    // 3. Entry -> Idle.
+    // Entry -> entry state (defaults to the first state).
+    FString EntryName = StateDefs[0].Name;
+    Spec->TryGetStringField(TEXT("entry"), EntryName);
+    UAnimStateNode** EntryState = StateByName.Find(EntryName);
+    if (!EntryState)
+        return MakeJsonError(FString::Printf(TEXT("Entry state '%s' is not one of the states."), *EntryName));
     if (UAnimStateEntryNode* Entry = FindNodeOfType<UAnimStateEntryNode>(SMGraph))
     {
         UEdGraphPin* EntryOut = FirstVisiblePin(Entry, EGPD_Output);
-        UEdGraphPin* IdleIn = FirstVisiblePin(IdleState, EGPD_Input);
-        if (EntryOut && IdleIn) EntryOut->MakeLinkTo(IdleIn);
-        else Warnings.Add(MakeShareable(new FJsonValueString(TEXT("Could not connect entry node to Idle state."))));
+        UEdGraphPin* StateIn = FirstVisiblePin(*EntryState, EGPD_Input);
+        if (EntryOut && StateIn) EntryOut->MakeLinkTo(StateIn);
+        else Warnings.Add(MakeShareable(new FJsonValueString(TEXT("Could not connect the entry node."))));
     }
 
-    // 4. Transitions Idle->Move (Speed > T) and Move->Idle (Speed < T), with speed-driven rules.
-    auto MakeTransition = [&](UAnimStateNode* From, UAnimStateNode* To, bool bGreater)
+    // Transitions, each with an optional float-comparison rule.
+    int32 TransCount = 0;
+    const TArray<TSharedPtr<FJsonValue>>* TransJson = nullptr;
+    if (Spec->TryGetArrayField(TEXT("transitions"), TransJson))
     {
-        FGraphNodeCreator<UAnimStateTransitionNode> Creator(*SMGraph);
-        UAnimStateTransitionNode* Trans = Creator.CreateNode(false);
-        Creator.Finalize();
-        Trans->CreateConnections(From, To);
-        if (!BuildSpeedTransitionRule(Trans->GetBoundGraph(), SpeedVarName, MoveSpeedThreshold, bGreater))
-            Warnings.Add(MakeShareable(new FJsonValueString(
-                FString::Printf(TEXT("Transition %s rule was left at default."), bGreater ? TEXT("Idle->Move") : TEXT("Move->Idle")))));
-    };
-    MakeTransition(IdleState, MoveState, /*bGreater*/ true);
-    MakeTransition(MoveState, IdleState, /*bGreater*/ false);
+        for (const TSharedPtr<FJsonValue>& TV : *TransJson)
+        {
+            const TSharedPtr<FJsonObject> TO = TV->AsObject();
+            if (!TO.IsValid()) continue;
+            FString From, To;
+            TO->TryGetStringField(TEXT("from"), From);
+            TO->TryGetStringField(TEXT("to"), To);
+            UAnimStateNode** FromState = StateByName.Find(From);
+            UAnimStateNode** ToState = StateByName.Find(To);
+            if (!FromState || !ToState)
+                return MakeJsonError(FString::Printf(TEXT("Transition references unknown state(s): '%s' -> '%s'."), *From, *To));
 
-    // 5. Compile and report.
+            FGraphNodeCreator<UAnimStateTransitionNode> Creator(*SMGraph);
+            UAnimStateTransitionNode* Trans = Creator.CreateNode(false);
+            Creator.Finalize();
+            Trans->CreateConnections(*FromState, *ToState);
+            ++TransCount;
+
+            FString Var, Op;
+            if (TO->TryGetStringField(TEXT("var"), Var) && TO->TryGetStringField(TEXT("op"), Op))
+            {
+                double Value = 0.0;
+                TO->TryGetNumberField(TEXT("value"), Value);
+                if (!BuildFloatTransitionRule(Trans->GetBoundGraph(), Var, Op, (float)Value))
+                    Warnings.Add(MakeShareable(new FJsonValueString(
+                        FString::Printf(TEXT("Rule for %s->%s left at default (bad var/op?)."), *From, *To))));
+            }
+        }
+    }
+
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(AnimBP);
     FKismetEditorUtilities::CompileBlueprint(AnimBP);
 
     TSharedPtr<FJsonObject> R = MakeShareable(new FJsonObject());
     R->SetBoolField(TEXT("success"), true);
     R->SetStringField(TEXT("state_machine"), SMNode->GetName());
-    TArray<TSharedPtr<FJsonValue>> States;
-    States.Add(MakeShareable(new FJsonValueString(TEXT("Idle"))));
-    States.Add(MakeShareable(new FJsonValueString(TEXT("Move"))));
-    R->SetArrayField(TEXT("states"), States);
-    R->SetNumberField(TEXT("transition_count"), 2);
-    R->SetStringField(TEXT("speed_variable"), SpeedVarName);
-    R->SetNumberField(TEXT("move_speed_threshold"), MoveSpeedThreshold);
+    TArray<TSharedPtr<FJsonValue>> StateNames;
+    for (const FStateDef& SD : StateDefs)
+        StateNames.Add(MakeShareable(new FJsonValueString(SD.Name)));
+    R->SetArrayField(TEXT("states"), StateNames);
+    R->SetNumberField(TEXT("transition_count"), TransCount);
     R->SetArrayField(TEXT("warnings"), Warnings);
     return SerializeJsonObj(R);
+}
+
+FString UMCPythonHelper::BuildAnimStateMachine(UAnimBlueprint* AnimBP, const FString& SpecJson)
+{
+    if (!AnimBP)
+        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
+    TSharedPtr<FJsonObject> Spec;
+    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(SpecJson);
+    if (!FJsonSerializer::Deserialize(Reader, Spec) || !Spec.IsValid())
+        return MakeJsonError(TEXT("Failed to parse spec JSON."));
+    return BuildStateMachineFromSpec(AnimBP, Spec);
+}
+
+FString UMCPythonHelper::BuildLocomotionStateMachine(UAnimBlueprint* AnimBP, const FString& IdleAnimPath,
+    const FString& MoveAnimPath, const FString& SpeedVarName, float MoveSpeedThreshold)
+{
+    if (!AnimBP)
+        return MakeJsonError(TEXT("Invalid AnimBlueprint."));
+    if (FBlueprintEditorUtils::FindMemberVariableGuidByName(AnimBP, FName(*SpeedVarName)) == FGuid())
+        return MakeJsonError(FString::Printf(TEXT("Float variable '%s' not found on the AnimBlueprint. Add it first (blueprint add_variable)."), *SpeedVarName));
+
+    // Emit a 2-state spec and delegate to the shared core (no construction logic duplicated).
+    auto MakeState = [](const FString& Name, const FString& Anim) -> TSharedPtr<FJsonValue> {
+        TSharedPtr<FJsonObject> S = MakeShareable(new FJsonObject());
+        S->SetStringField(TEXT("name"), Name);
+        S->SetStringField(TEXT("anim"), Anim);
+        return MakeShareable(new FJsonValueObject(S));
+    };
+    auto MakeTrans = [&](const FString& From, const FString& To, const FString& Op) -> TSharedPtr<FJsonValue> {
+        TSharedPtr<FJsonObject> T = MakeShareable(new FJsonObject());
+        T->SetStringField(TEXT("from"), From);
+        T->SetStringField(TEXT("to"), To);
+        T->SetStringField(TEXT("var"), SpeedVarName);
+        T->SetStringField(TEXT("op"), Op);
+        T->SetNumberField(TEXT("value"), MoveSpeedThreshold);
+        return MakeShareable(new FJsonValueObject(T));
+    };
+    TSharedPtr<FJsonObject> Spec = MakeShareable(new FJsonObject());
+    Spec->SetStringField(TEXT("entry"), TEXT("Idle"));
+    Spec->SetArrayField(TEXT("states"), { MakeState(TEXT("Idle"), IdleAnimPath), MakeState(TEXT("Move"), MoveAnimPath) });
+    Spec->SetArrayField(TEXT("transitions"), { MakeTrans(TEXT("Idle"), TEXT("Move"), TEXT(">")),
+                                               MakeTrans(TEXT("Move"), TEXT("Idle"), TEXT("<")) });
+    return BuildStateMachineFromSpec(AnimBP, Spec);
 }

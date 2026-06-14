@@ -155,6 +155,10 @@ CATALOG = {
             'params': 'asset_path, anim_sequence_path, link_to_output_pose=True',
             'doc': 'Adds a looping Sequence Player to the AnimGraph, optionally wired to the Output Pose.',
         },
+        'build_anim_state_machine': {
+            'params': 'asset_path, spec',
+            'doc': 'Builds an arbitrary AnimGraph state machine from a spec: states[{name,anim?}], entry?, transitions[{from,to,var?,op?,value?}].',
+        },
         'build_locomotion_state_machine': {
             'params': "asset_path, idle_anim_path, move_anim_path, speed_variable='Speed', move_speed_threshold=10.0",
             'doc': 'Builds an Idle<->Move state machine in the AnimGraph, driven by a float speed variable.',

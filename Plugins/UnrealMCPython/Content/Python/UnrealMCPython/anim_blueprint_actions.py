@@ -148,3 +148,34 @@ def ue_build_locomotion_state_machine(asset_path: str = None, idle_anim_path: st
         return result_json
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_build_anim_state_machine(asset_path: str = None, spec: dict = None) -> str:
+    """Builds an arbitrary AnimGraph state machine from a spec: states[{name,anim?}], entry?, transitions[{from,to,var?,op?,value?}]."""
+    if asset_path is None or spec is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, spec."})
+    try:
+        bp = _load_anim_blueprint(asset_path)
+        states = spec.get("states") or []
+        if not states:
+            return json.dumps({"success": False, "message": "spec.states must be a non-empty list."})
+        # Validate referenced anims up front (clearer error than a C++ load failure).
+        for s in states:
+            anim = s.get("anim")
+            if anim and not unreal.EditorAssetLibrary.does_asset_exist(anim):
+                return json.dumps({"success": False,
+                                   "message": f"State '{s.get('name')}': AnimSequence not found: {anim}"})
+        # Auto-create every float variable referenced by a transition rule.
+        transitions = spec.get("transitions") or []
+        needed_vars = {t["var"] for t in transitions if t.get("var")}
+        if needed_vars:
+            bel = unreal.BlueprintEditorLibrary
+            pin = bel.get_basic_type_by_name(unreal.Name("real"))
+            for v in needed_vars:
+                bel.add_member_variable(bp, unreal.Name(v), pin)  # no-op if it already exists
+            bel.compile_blueprint(bp)
+        result_json = unreal.MCPythonHelper.build_anim_state_machine(bp, json.dumps(spec))
+        unreal.EditorAssetLibrary.save_loaded_asset(bp)
+        return result_json
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
