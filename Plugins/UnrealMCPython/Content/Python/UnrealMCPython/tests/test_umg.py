@@ -147,3 +147,59 @@ class TestUMGActions(MCPTestCase):
         r = self.call("umg_actions", "ue_compile_widget_blueprint",
                       asset_path=self._wbp_path)
         self.assertSuccess(r)
+
+    # ── hierarchy ops: reparent / wrap / replace ─────────────────────────────────
+
+    def _root_canvas_with(self, *widgets):
+        self.call("umg_actions", "ue_add_widget", asset_path=self._wbp_path,
+                  widget_type="CanvasPanel", widget_name="Root")
+        for wtype, wname in widgets:
+            self.call("umg_actions", "ue_add_widget", asset_path=self._wbp_path,
+                      widget_type=wtype, widget_name=wname, parent_name="Root")
+
+    def test_reparent_widget_and_cycle_guard(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("VerticalBox", "VBox"), ("Button", "Btn"))
+        r = self.call("umg_actions", "ue_reparent_widget", asset_path=self._wbp_path,
+                      widget_name="Btn", new_parent_name="VBox")
+        self.assertSuccess(r)
+        # Btn now lives under VBox — reparenting VBox into Btn must be rejected (cycle)
+        r2 = self.call("umg_actions", "ue_reparent_widget", asset_path=self._wbp_path,
+                       widget_name="VBox", new_parent_name="Btn")
+        self.assertFalse(r2.get("success"))
+
+    def test_reparent_missing_param(self):
+        self._skip_if_no_wbp()
+        r = self.call("umg_actions", "ue_reparent_widget",
+                      asset_path=self._wbp_path, widget_name="Btn")
+        self.assertFalse(r.get("success"))
+
+    def test_wrap_widget(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "Btn"))
+        r = self.call("umg_actions", "ue_wrap_widget", asset_path=self._wbp_path,
+                      widget_name="Btn", wrapper_type="VerticalBox", wrapper_name="Wrapper")
+        self.assertSuccess(r)
+        self.assertEqual(r["wrapper_type"], "VerticalBox")
+        # tree must still compile after the structural change
+        c = self.call("umg_actions", "ue_compile_widget_blueprint", asset_path=self._wbp_path)
+        self.assertSuccess(c)
+
+    def test_wrap_rejects_non_panel_wrapper(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "Btn"))
+        r = self.call("umg_actions", "ue_wrap_widget", asset_path=self._wbp_path,
+                      widget_name="Btn", wrapper_type="TextBlock", wrapper_name="BadWrap")
+        self.assertFalse(r.get("success"))
+
+    def test_replace_widget(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "OldBtn"))
+        r = self.call("umg_actions", "ue_replace_widget", asset_path=self._wbp_path,
+                      widget_name="OldBtn", new_type="Image", new_name="NewImg")
+        self.assertSuccess(r)
+        self.assertEqual(r["new_type"], "Image")
+        # the old widget must be gone — operating on it now fails
+        gone = self.call("umg_actions", "ue_reparent_widget", asset_path=self._wbp_path,
+                         widget_name="OldBtn", new_parent_name="Root")
+        self.assertFalse(gone.get("success"))

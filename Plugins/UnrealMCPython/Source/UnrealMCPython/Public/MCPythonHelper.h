@@ -215,6 +215,18 @@ public:
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString UmgSetWidgetProperty(UBlueprint* WidgetBP, const FString& WidgetName, const FString& PropertyName, const FString& Value);
 
+    /** Move a widget under a different panel parent (preserves the widget; cycle-guarded). Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UmgReparentWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& NewParentName);
+
+    /** Wrap a widget in a newly-created panel of WrapperType, taking the widget's place in the tree. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UmgWrapWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& WrapperType, const FString& WrapperName);
+
+    /** Replace a widget with a new widget of NewType at the same slot (old subtree is discarded). Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UmgReplaceWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& NewType, const FString& NewName);
+
     /** Add a component to a Blueprint's SCS.
      *  ComponentClassPath e.g. "/Script/Engine.CameraComponent"
      *  ParentComponentName: name of the parent SCS node, or "" to attach to root */

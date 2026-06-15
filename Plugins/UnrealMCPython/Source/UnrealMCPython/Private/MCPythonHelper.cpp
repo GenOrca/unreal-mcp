@@ -2390,6 +2390,133 @@ FString UMCPythonHelper::UmgSetWidgetProperty(UBlueprint* WidgetBP, const FStrin
     return SerializeJsonObj(R);
 }
 
+// ─── UMG hierarchy ops (reparent / wrap / replace) ───────────────────────────
+
+// True if Ancestor is Widget itself or one of its ancestors (for reparent cycle guard).
+static bool UmgIsAncestorOf(UWidget* Ancestor, UWidget* Widget)
+{
+    for (UWidget* W = Widget; W; W = W->GetParent())
+        if (W == Ancestor) return true;
+    return false;
+}
+
+FString UMCPythonHelper::UmgReparentWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& NewParentName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return UmgErrorJson(TEXT("Not a WidgetBlueprint or no WidgetTree."));
+    UWidgetTree* WT = WB->WidgetTree;
+
+    UWidget* Widget = WT->FindWidget(FName(*WidgetName));
+    if (!Widget) return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+    UWidget* NewParentWidget = WT->FindWidget(FName(*NewParentName));
+    if (!NewParentWidget) return UmgErrorJson(FString::Printf(TEXT("New parent '%s' not found."), *NewParentName));
+    UPanelWidget* NewParent = Cast<UPanelWidget>(NewParentWidget);
+    if (!NewParent) return UmgErrorJson(FString::Printf(TEXT("New parent '%s' is not a panel widget."), *NewParentName));
+    if (Widget == NewParent) return UmgErrorJson(TEXT("Cannot reparent a widget into itself."));
+    if (UmgIsAncestorOf(Widget, NewParent))
+        return UmgErrorJson(TEXT("Cannot reparent: target is an ancestor of the new parent (cycle)."));
+    if (!NewParent->CanHaveMultipleChildren() && NewParent->GetChildrenCount() > 0)
+        return UmgErrorJson(FString::Printf(TEXT("Panel '%s' already holds its single allowed child."), *NewParentName));
+
+    WT->Modify();
+    if (UPanelWidget* OldParent = Cast<UPanelWidget>(Widget->GetParent()))
+        OldParent->RemoveChild(Widget);
+    else if (WT->RootWidget == Widget)
+        WT->RootWidget = nullptr;
+    NewParent->AddChild(Widget);
+
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    TSharedPtr<FJsonObject> R = MakeShared<FJsonObject>();
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("widget"), WidgetName);
+    R->SetStringField(TEXT("new_parent"), NewParentName);
+    return SerializeJsonObj(R);
+}
+
+FString UMCPythonHelper::UmgWrapWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& WrapperType, const FString& WrapperName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return UmgErrorJson(TEXT("Not a WidgetBlueprint or no WidgetTree."));
+    UWidgetTree* WT = WB->WidgetTree;
+
+    UWidget* Widget = WT->FindWidget(FName(*WidgetName));
+    if (!Widget) return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+
+    UClass* WrapperClass = FindUMGWidgetClass(WrapperType);
+    if (!WrapperClass) return UmgErrorJson(FString::Printf(TEXT("Unknown widget type '%s'."), *WrapperType));
+    if (!WrapperClass->IsChildOf(UPanelWidget::StaticClass()))
+        return UmgErrorJson(FString::Printf(TEXT("Wrapper type '%s' is not a panel widget."), *WrapperType));
+
+    WT->Modify();
+    UPanelWidget* Wrapper = WT->ConstructWidget<UPanelWidget>(WrapperClass, FName(*WrapperName));
+    if (!Wrapper) return UmgErrorJson(FString::Printf(TEXT("Failed to construct wrapper '%s'."), *WrapperName));
+    Wrapper->bIsVariable = true;
+
+    if (UPanelWidget* OldParent = Cast<UPanelWidget>(Widget->GetParent()))
+    {
+        const int32 Index = OldParent->GetChildIndex(Widget);
+        OldParent->ReplaceChildAt(Index, Wrapper);   // wrapper takes the widget's slot
+        Wrapper->AddChild(Widget);                    // widget moves inside the wrapper
+    }
+    else if (WT->RootWidget == Widget)
+    {
+        WT->RootWidget = Wrapper;
+        Wrapper->AddChild(Widget);
+    }
+    else
+    {
+        return UmgErrorJson(FString::Printf(TEXT("Widget '%s' is not attached to a panel or root."), *WidgetName));
+    }
+
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    TSharedPtr<FJsonObject> R = MakeShared<FJsonObject>();
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("wrapped"), WidgetName);
+    R->SetStringField(TEXT("wrapper"), Wrapper->GetName());
+    R->SetStringField(TEXT("wrapper_type"), WrapperType);
+    return SerializeJsonObj(R);
+}
+
+FString UMCPythonHelper::UmgReplaceWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& NewType, const FString& NewName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return UmgErrorJson(TEXT("Not a WidgetBlueprint or no WidgetTree."));
+    UWidgetTree* WT = WB->WidgetTree;
+
+    UWidget* Widget = WT->FindWidget(FName(*WidgetName));
+    if (!Widget) return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+
+    UClass* NewClass = FindUMGWidgetClass(NewType);
+    if (!NewClass) return UmgErrorJson(FString::Printf(TEXT("Unknown widget type '%s'."), *NewType));
+
+    WT->Modify();
+    UWidget* NewWidget = WT->ConstructWidget<UWidget>(NewClass, FName(*NewName));
+    if (!NewWidget) return UmgErrorJson(FString::Printf(TEXT("Failed to construct widget '%s'."), *NewName));
+    NewWidget->bIsVariable = true;
+
+    if (UPanelWidget* OldParent = Cast<UPanelWidget>(Widget->GetParent()))
+    {
+        const int32 Index = OldParent->GetChildIndex(Widget);
+        OldParent->ReplaceChildAt(Index, NewWidget);   // old widget (and its subtree) is discarded
+    }
+    else if (WT->RootWidget == Widget)
+    {
+        WT->RootWidget = NewWidget;
+    }
+    else
+    {
+        return UmgErrorJson(FString::Printf(TEXT("Widget '%s' is not attached to a panel or root."), *WidgetName));
+    }
+
+    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    TSharedPtr<FJsonObject> R = MakeShared<FJsonObject>();
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("replaced"), WidgetName);
+    R->SetStringField(TEXT("new_widget"), NewWidget->GetName());
+    R->SetStringField(TEXT("new_type"), NewType);
+    return SerializeJsonObj(R);
+}
+
 // ─── AddComponentToBlueprint UFUNCTION ───────────────────────────────────────
 
 FString UMCPythonHelper::AddComponentToBlueprint(UBlueprint* Blueprint,

@@ -246,6 +246,53 @@ def ue_compile_widget_blueprint(asset_path: str = None) -> str:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
+def _umg_call_and_save(asset_path, fn):
+    widget_bp, err = _load_widget_blueprint(asset_path)
+    if err:
+        return err
+    result_json = fn(widget_bp)
+    if json.loads(result_json).get("success"):
+        unreal.EditorAssetLibrary.save_asset(widget_bp.get_path_name())
+    return result_json
+
+
+def ue_reparent_widget(asset_path: str = None, widget_name: str = None, new_parent_name: str = None) -> str:
+    """Moves a widget under a different panel parent (cycle-guarded)."""
+    if asset_path is None or widget_name is None or new_parent_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, widget_name, new_parent_name."})
+    try:
+        return _umg_call_and_save(asset_path,
+            lambda bp: unreal.MCPythonHelper.umg_reparent_widget(bp, widget_name, new_parent_name))
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_wrap_widget(asset_path: str = None, widget_name: str = None,
+                   wrapper_type: str = None, wrapper_name: str = None) -> str:
+    """Wraps a widget in a new panel (wrapper_type, e.g. 'VerticalBox') that takes its place."""
+    if asset_path is None or widget_name is None or wrapper_type is None or wrapper_name is None:
+        return json.dumps({"success": False,
+                           "message": "Required parameters: asset_path, widget_name, wrapper_type, wrapper_name."})
+    try:
+        return _umg_call_and_save(asset_path,
+            lambda bp: unreal.MCPythonHelper.umg_wrap_widget(bp, widget_name, wrapper_type, wrapper_name))
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_replace_widget(asset_path: str = None, widget_name: str = None,
+                      new_type: str = None, new_name: str = None) -> str:
+    """Replaces a widget with a new widget of new_type at the same slot (old subtree discarded)."""
+    if asset_path is None or widget_name is None or new_type is None or new_name is None:
+        return json.dumps({"success": False,
+                           "message": "Required parameters: asset_path, widget_name, new_type, new_name."})
+    try:
+        return _umg_call_and_save(asset_path,
+            lambda bp: unreal.MCPythonHelper.umg_replace_widget(bp, widget_name, new_type, new_name))
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
 def ue_set_slot_layout(asset_path: str = None, widget_name: str = None,
                        anchor_min_x: float = 0.5, anchor_min_y: float = 0.5,
                        anchor_max_x: float = 0.5, anchor_max_y: float = 0.5,

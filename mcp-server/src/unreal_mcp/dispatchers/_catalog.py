@@ -921,6 +921,14 @@ CATALOG = {
             'params': 'asset_path, widget_name',
             'doc': '',
         },
+        'reparent_widget': {
+            'params': 'asset_path, widget_name, new_parent_name',
+            'doc': 'Moves a widget under a different panel parent (cycle-guarded).',
+        },
+        'replace_widget': {
+            'params': 'asset_path, widget_name, new_type, new_name',
+            'doc': 'Replaces a widget with a new widget of new_type at the same slot (old subtree discarded).',
+        },
         'set_slot_layout': {
             'params': 'asset_path, widget_name, anchor_min_x=0.5, anchor_min_y=0.5, anchor_max_x=0.5, anchor_max_y=0.5, offset_x=0.0, offset_y=0.0, size_x=100.0, size_y=40.0',
             'doc': 'Sets CanvasPanelSlot layout (anchors + offset + size) on a widget.',
@@ -936,6 +944,10 @@ CATALOG = {
         'set_widget_property': {
             'params': 'asset_path, widget_name, property_name, value',
             'doc': 'Sets a C++ UPROPERTY on a named widget from a string value.',
+        },
+        'wrap_widget': {
+            'params': 'asset_path, widget_name, wrapper_type, wrapper_name',
+            'doc': "Wraps a widget in a new panel (wrapper_type, e.g. 'VerticalBox') that takes its place.",
         },
     },
     'util': {
