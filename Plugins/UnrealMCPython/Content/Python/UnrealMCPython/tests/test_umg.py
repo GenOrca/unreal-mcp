@@ -203,3 +203,41 @@ class TestUMGActions(MCPTestCase):
         gone = self.call("umg_actions", "ue_reparent_widget", asset_path=self._wbp_path,
                          widget_name="OldBtn", new_parent_name="Root")
         self.assertFalse(gone.get("success"))
+
+    # ── event binding ────────────────────────────────────────────────────────────
+
+    def test_list_widget_events(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "Btn"))
+        r = self.call("umg_actions", "ue_list_widget_events",
+                      asset_path=self._wbp_path, widget_name="Btn")
+        self.assertSuccess(r)
+        # a Button exposes OnClicked among its multicast delegates
+        self.assertIn("OnClicked", r["events"])
+
+    def test_bind_widget_event(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "Btn"))
+        r = self.call("umg_actions", "ue_bind_widget_event",
+                      asset_path=self._wbp_path, widget_name="Btn", event_name="OnClicked")
+        self.assertSuccess(r)
+        self.assertEqual(r["event"], "OnClicked")
+        self.assertTrue(r["node"])
+        # binding the same event again is idempotent (reports the existing node)
+        again = self.call("umg_actions", "ue_bind_widget_event",
+                          asset_path=self._wbp_path, widget_name="Btn", event_name="OnClicked")
+        self.assertSuccess(again)
+        self.assertTrue(again["already_existed"])
+
+    def test_bind_widget_event_unknown_event(self):
+        self._skip_if_no_wbp()
+        self._root_canvas_with(("Button", "Btn"))
+        r = self.call("umg_actions", "ue_bind_widget_event",
+                      asset_path=self._wbp_path, widget_name="Btn", event_name="OnNopeEvent_XYZ")
+        self.assertFalse(r.get("success"))
+
+    def test_bind_widget_event_missing_param(self):
+        self._skip_if_no_wbp()
+        r = self.call("umg_actions", "ue_bind_widget_event",
+                      asset_path=self._wbp_path, widget_name="Btn")
+        self.assertFalse(r.get("success"))

@@ -293,6 +293,30 @@ def ue_replace_widget(asset_path: str = None, widget_name: str = None,
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
+def ue_list_widget_events(asset_path: str = None, widget_name: str = None) -> str:
+    """Lists the bindable multicast-delegate events on a widget (e.g. OnClicked, OnHovered)."""
+    if asset_path is None or widget_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, widget_name."})
+    try:
+        widget_bp, err = _load_widget_blueprint(asset_path)
+        if err:
+            return err
+        return unreal.MCPythonHelper.umg_list_widget_events(widget_bp, widget_name)
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_bind_widget_event(asset_path: str = None, widget_name: str = None, event_name: str = None) -> str:
+    """Creates a bound event node in the widget BP's event graph for a widget delegate (e.g. Button OnClicked)."""
+    if asset_path is None or widget_name is None or event_name is None:
+        return json.dumps({"success": False, "message": "Required parameters: asset_path, widget_name, event_name."})
+    try:
+        return _umg_call_and_save(asset_path,
+            lambda bp: unreal.MCPythonHelper.umg_bind_widget_event(bp, widget_name, event_name))
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
 def ue_set_slot_layout(asset_path: str = None, widget_name: str = None,
                        anchor_min_x: float = 0.5, anchor_min_y: float = 0.5,
                        anchor_max_x: float = 0.5, anchor_max_y: float = 0.5,

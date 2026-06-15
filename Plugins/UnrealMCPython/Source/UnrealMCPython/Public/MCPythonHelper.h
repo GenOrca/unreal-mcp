@@ -227,6 +227,14 @@ public:
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString UmgReplaceWidget(UBlueprint* WidgetBP, const FString& WidgetName, const FString& NewType, const FString& NewName);
 
+    /** List the bindable multicast-delegate events on a widget (e.g. OnClicked). Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UmgListWidgetEvents(UBlueprint* WidgetBP, const FString& WidgetName);
+
+    /** Create a bound event node in the widget BP's event graph for a widget's delegate. Returns JSON. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UmgBindWidgetEvent(UBlueprint* WidgetBP, const FString& WidgetName, const FString& EventName);
+
     /** Add a component to a Blueprint's SCS.
      *  ComponentClassPath e.g. "/Script/Engine.CameraComponent"
      *  ParentComponentName: name of the parent SCS node, or "" to attach to root */

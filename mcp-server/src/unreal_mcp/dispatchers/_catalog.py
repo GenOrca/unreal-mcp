@@ -901,6 +901,10 @@ CATALOG = {
             'params': 'asset_path, widget_type, widget_name, parent_name',
             'doc': '',
         },
+        'bind_widget_event': {
+            'params': 'asset_path, widget_name, event_name',
+            'doc': "Creates a bound event node in the widget BP's event graph for a widget delegate (e.g. Button OnClicked).",
+        },
         'compile_widget_blueprint': {
             'params': 'asset_path',
             'doc': '',
@@ -916,6 +920,10 @@ CATALOG = {
         'get_widget_property': {
             'params': 'asset_path, widget_name, property_name',
             'doc': 'Gets the value of a C++ UPROPERTY on a named widget.',
+        },
+        'list_widget_events': {
+            'params': 'asset_path, widget_name',
+            'doc': 'Lists the bindable multicast-delegate events on a widget (e.g. OnClicked, OnHovered).',
         },
         'remove_widget': {
             'params': 'asset_path, widget_name',

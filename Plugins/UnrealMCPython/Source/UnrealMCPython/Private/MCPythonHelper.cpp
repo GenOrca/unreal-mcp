@@ -39,6 +39,7 @@
 #include "Serialization/JsonReader.h"
 // Blueprint graph includes
 #include "K2Node_Event.h"
+#include "K2Node_ComponentBoundEvent.h"
 #include "K2Node_CustomEvent.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_IfThenElse.h"
@@ -2514,6 +2515,87 @@ FString UMCPythonHelper::UmgReplaceWidget(UBlueprint* WidgetBP, const FString& W
     R->SetStringField(TEXT("replaced"), WidgetName);
     R->SetStringField(TEXT("new_widget"), NewWidget->GetName());
     R->SetStringField(TEXT("new_type"), NewType);
+    return SerializeJsonObj(R);
+}
+
+// ─── UMG event binding (widget delegate -> bound event node) ─────────────────
+
+FString UMCPythonHelper::UmgListWidgetEvents(UBlueprint* WidgetBP, const FString& WidgetName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return UmgErrorJson(TEXT("Not a WidgetBlueprint or no WidgetTree."));
+    UWidget* W = WB->WidgetTree->FindWidget(FName(*WidgetName));
+    if (!W) return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+
+    TArray<TSharedPtr<FJsonValue>> Events;
+    for (TFieldIterator<FMulticastDelegateProperty> It(W->GetClass()); It; ++It)
+        Events.Add(MakeShareable(new FJsonValueString(It->GetName())));
+
+    TSharedPtr<FJsonObject> R = MakeShared<FJsonObject>();
+    R->SetBoolField(TEXT("success"), true);
+    R->SetStringField(TEXT("widget"), WidgetName);
+    R->SetStringField(TEXT("widget_class"), W->GetClass()->GetName());
+    R->SetArrayField(TEXT("events"), Events);
+    return SerializeJsonObj(R);
+}
+
+FString UMCPythonHelper::UmgBindWidgetEvent(UBlueprint* WidgetBP, const FString& WidgetName, const FString& EventName)
+{
+    UWidgetBlueprint* WB = Cast<UWidgetBlueprint>(WidgetBP);
+    if (!WB || !WB->WidgetTree) return UmgErrorJson(TEXT("Not a WidgetBlueprint or no WidgetTree."));
+    UWidget* W = WB->WidgetTree->FindWidget(FName(*WidgetName));
+    if (!W) return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
+
+    // The delegate must exist on the widget class.
+    if (!FindFProperty<FMulticastDelegateProperty>(W->GetClass(), FName(*EventName)))
+    {
+        TArray<FString> Avail;
+        for (TFieldIterator<FMulticastDelegateProperty> It(W->GetClass()); It; ++It) Avail.Add(It->GetName());
+        return UmgErrorJson(FString::Printf(TEXT("Event '%s' not found on %s. Available: %s"),
+            *EventName, *W->GetClass()->GetName(), *FString::Join(Avail, TEXT(", "))));
+    }
+
+    // A bindable widget must be a variable.
+    if (!W->bIsVariable)
+    {
+        W->bIsVariable = true;
+        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    }
+
+    // Resolve the generated variable property; compile ONCE only if it isn't present yet.
+    FObjectProperty* VarProp = FindFProperty<FObjectProperty>(WB->SkeletonGeneratedClass, FName(*WidgetName));
+    if (!VarProp)
+    {
+        FKismetEditorUtilities::CompileBlueprint(WB);
+        VarProp = FindFProperty<FObjectProperty>(WB->SkeletonGeneratedClass, FName(*WidgetName));
+    }
+    if (!VarProp)
+        return UmgErrorJson(FString::Printf(TEXT("Could not resolve the widget variable property for '%s'."), *WidgetName));
+
+    const bool bAlready = FKismetEditorUtilities::FindBoundEventForComponent(WB, FName(*EventName), VarProp->GetFName()) != nullptr;
+    if (!bAlready)
+    {
+        // Mirror UMG's own detail panel: create the node and let the editor recompile on its
+        // deferred tick / on save. A manual CompileBlueprint here triggers mid-task reinstancing
+        // that crashes a subsequent save/delete of the same asset within one game-thread task.
+        FKismetEditorUtilities::CreateNewBoundEventForClass(W->GetClass(), FName(*EventName), WB, VarProp);
+        FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    }
+
+    const UK2Node_ComponentBoundEvent* Node =
+        FKismetEditorUtilities::FindBoundEventForComponent(WB, FName(*EventName), VarProp->GetFName());
+
+    TSharedPtr<FJsonObject> R = MakeShared<FJsonObject>();
+    R->SetBoolField(TEXT("success"), Node != nullptr);
+    if (!Node)
+    {
+        R->SetStringField(TEXT("message"), TEXT("Bound event node was not created."));
+        return SerializeJsonObj(R);
+    }
+    R->SetStringField(TEXT("widget"), WidgetName);
+    R->SetStringField(TEXT("event"), EventName);
+    R->SetStringField(TEXT("node"), Node->GetName());
+    R->SetBoolField(TEXT("already_existed"), bAlready);
     return SerializeJsonObj(R);
 }
 
