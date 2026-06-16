@@ -213,3 +213,25 @@ class TestAssetActions(MCPTestCase):
         r = self.call("asset_actions", "ue_import_fbx",
                       file_path="C:/no/such/file.fbx", destination_path="/Game/Tests/MCP")
         self.assertFalse(r.get("success"))
+
+    # ── glTF import (deferred-tick; happy path is covered by test_e2e) ────────────
+
+    def test_import_gltf_missing_param(self):
+        r = self.call("asset_actions", "ue_import_gltf", file_path="C:/x.glb")
+        self.assertFalse(r.get("success"))  # destination_path missing
+
+    def test_import_gltf_file_not_found(self):
+        r = self.call("asset_actions", "ue_import_gltf",
+                      file_path="C:/no/such/model.glb", destination_path="/Game/Tests/MCP/glb_guard")
+        self.assertFalse(r.get("success"))
+
+    def test_get_gltf_import_status_missing_param(self):
+        r = self.call("asset_actions", "ue_get_gltf_import_status")
+        self.assertFalse(r.get("success"))
+
+    def test_get_gltf_import_status_no_import(self):
+        # nothing scheduled for this path → valid response, not done yet (pending)
+        r = self.call("asset_actions", "ue_get_gltf_import_status",
+                      destination_path="/Game/Tests/MCP/never_imported_xyz")
+        self.assertSuccess(r)
+        self.assertFalse(r["done"])

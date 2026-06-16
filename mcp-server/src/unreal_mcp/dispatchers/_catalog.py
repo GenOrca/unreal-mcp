@@ -275,6 +275,10 @@ CATALOG = {
             'params': 'asset_path',
             'doc': 'Lists packages that the given asset depends on (references).',
         },
+        'get_gltf_import_status': {
+            'params': 'destination_path',
+            'doc': 'Polls a scheduled glTF import; returns done + imported assets once Interchange finishes.',
+        },
         'get_metadata_tag': {
             'params': 'asset_path, tag',
             'doc': 'Reads a metadata tag value on an asset (empty string if unset).',
@@ -286,6 +290,10 @@ CATALOG = {
         'import_fbx': {
             'params': "file_path, destination_path, destination_name='', as_skeletal=False, import_materials=False, import_textures=False, import_animations=False",
             'doc': 'Imports an FBX file as a Static/Skeletal mesh using the legacy FBX importer.',
+        },
+        'import_gltf': {
+            'params': 'file_path, destination_path',
+            'doc': 'Imports a .glb/.gltf via Interchange, deferred to the editor tick. Poll get_gltf_import_status for the result.',
         },
         'import_texture': {
             'params': "file_path, destination_path, destination_name=''",

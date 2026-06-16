@@ -139,6 +139,49 @@ def test_vision_capture_returns_image():
     assert data[:4] == b"\x89PNG", "capture did not return a PNG"
 
 
+def test_gltf_import_round_trip():
+    """glTF import via the deferred-tick path: export the engine Cube to .glb, import it,
+    then poll get_gltf_import_status until done. Each dispatch is its own game-thread task,
+    so the editor ticks between calls and the Interchange async import can run + complete."""
+    import time
+
+    # 1. export /Engine/BasicShapes/Cube to a temp .glb (via execute_python)
+    export_code = (
+        "import unreal, os\n"
+        "glb = os.path.join(unreal.Paths.project_saved_dir(), 'MCP_E2E_gltf.glb').replace(chr(92), '/')\n"
+        "cube = unreal.EditorAssetLibrary.load_asset('/Engine/BasicShapes/Cube')\n"
+        "t = unreal.AssetExportTask(); t.object = cube; t.filename = glb\n"
+        "t.automated = True; t.replace_identical = True; t.prompt = False\n"
+        "ok = unreal.Exporter.run_asset_export_task(t)\n"
+        "print('GLBPATH=' + glb if (ok and os.path.isfile(glb)) else 'GLBFAIL')\n"
+    )
+    r = run(disp.util.fn(action="execute_python", params={"code": export_code}))
+    blob = (r.get("result", "") or "") + (r.get("message", "") or "")
+    assert "GLBPATH=" in blob, f"glb export failed: {blob[:300]}"
+    glb = blob.split("GLBPATH=", 1)[1].split()[0].strip().strip('"')
+
+    dest = "/Game/Tests/MCP_E2E/glb"
+    try:
+        imp = run(disp._dispatch("asset", "import_gltf",
+                                 {"file_path": glb, "destination_path": dest}))
+        assert imp.get("success") and imp.get("pending"), f"schedule failed: {imp}"
+
+        st = {}
+        for _ in range(40):  # ~20s budget for the async Interchange import
+            st = run(disp._dispatch("asset", "get_gltf_import_status",
+                                    {"destination_path": dest}))
+            _assert_not_connection_error(st, "get_gltf_import_status")
+            if st.get("done"):
+                break
+            time.sleep(0.5)
+        assert st.get("success") and st.get("done"), f"import did not complete: {st}"
+        classes = [a["class"] for a in st["imported_assets"]]
+        assert "StaticMesh" in classes, f"no StaticMesh among imported: {st}"
+    finally:
+        run(disp.util.fn(action="execute_python", params={
+            "code": f"import unreal; unreal.EditorAssetLibrary.delete_directory('{dest}')"}))
+
+
 # ── exhaustive: every catalog action survives the full chain ───────────────────
 
 def _all_action_pairs():

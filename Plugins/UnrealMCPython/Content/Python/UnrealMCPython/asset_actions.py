@@ -340,6 +340,93 @@ def ue_import_fbx(file_path: str = None, destination_path: str = None,
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
+def _gltf_status_path(destination_path: str) -> str:
+    safe = destination_path.strip("/").replace("/", "_").replace("\\", "_")
+    return os.path.join(unreal.Paths.project_saved_dir(), f"_mcp_gltf_{safe}.json").replace("\\", "/")
+
+
+def ue_import_gltf(file_path: str = None, destination_path: str = None) -> str:
+    """Imports a .glb/.gltf via Interchange, deferred to the editor tick. Poll get_gltf_import_status for the result."""
+    # glTF import goes through Interchange, which is async (task-graph based). Driving it
+    # synchronously from the MCP game-thread task re-enters the task graph and crashes
+    # (RecursionGuard assertion). There is no legacy synchronous glTF factory in UE 5.7
+    # (unlike FBX), so we schedule the import on the next editor tick — outside our task —
+    # and report the result via a status sidecar polled by get_gltf_import_status.
+    if file_path is None or destination_path is None:
+        return json.dumps({"success": False, "message": "Required parameters: file_path, destination_path."})
+    try:
+        if not os.path.isfile(file_path):
+            return json.dumps({"success": False, "message": f"File not found: {file_path}"})
+        status_path = _gltf_status_path(destination_path)
+        if os.path.isfile(status_path):
+            os.remove(status_path)
+        unreal.EditorAssetLibrary.make_directory(destination_path)
+
+        handle = [None]
+        fired = [False]
+
+        def _run(delta_seconds):
+            if fired[0]:
+                return
+            fired[0] = True
+            try:
+                task = unreal.AssetImportTask()
+                task.filename = file_path
+                task.destination_path = destination_path
+                task.automated = True
+                task.replace_existing = True
+                task.save = True
+                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+                res = {"success": True}
+            except Exception as e:
+                res = {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+            try:
+                with open(status_path, "w", encoding="utf-8") as f:
+                    json.dump(res, f)
+            except Exception:
+                pass
+            if handle[0] is not None:
+                unreal.unregister_slate_post_tick_callback(handle[0])
+
+        handle[0] = unreal.register_slate_post_tick_callback(_run)
+        return json.dumps({"success": True, "pending": True, "destination_path": destination_path,
+                           "message": "glTF import scheduled on the editor tick. Poll 'get_gltf_import_status' with this destination_path."})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+def ue_get_gltf_import_status(destination_path: str = None) -> str:
+    """Polls a scheduled glTF import; returns done + imported assets once Interchange finishes."""
+    if destination_path is None:
+        return json.dumps({"success": False, "message": "Required parameter 'destination_path' is missing."})
+    try:
+        status_path = _gltf_status_path(destination_path)
+        if not os.path.isfile(status_path):
+            return json.dumps({"success": True, "done": False, "pending": True,
+                               "message": "Import tick has not fired yet; retry shortly."})
+        with open(status_path, encoding="utf-8") as f:
+            res = json.load(f)
+        if not res.get("success"):
+            os.remove(status_path)
+            return json.dumps({"success": False, "done": True,
+                               "message": res.get("error", "glTF import failed."),
+                               "traceback": res.get("traceback")})
+        created = (unreal.EditorAssetLibrary.list_assets(destination_path, recursive=True)
+                   if unreal.EditorAssetLibrary.does_directory_exist(destination_path) else [])
+        if not created:
+            # import_asset_tasks was called but Interchange is still finishing asynchronously
+            return json.dumps({"success": True, "done": False, "pending": True,
+                               "message": "Interchange still importing; retry shortly."})
+        assets = [{"path": str(p).split(".")[0],
+                   "class": str(unreal.EditorAssetLibrary.find_asset_data(p).asset_class_path.asset_name)}
+                  for p in created]
+        os.remove(status_path)
+        return json.dumps({"success": True, "done": True, "destination_path": destination_path,
+                           "imported_assets": assets, "count": len(assets)})
+    except Exception as e:
+        return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
 def ue_import_texture(file_path: str = None, destination_path: str = None,
                       destination_name: str = "") -> str:
     """Imports an image file (PNG/JPG/TGA...) as a Texture2D using the legacy texture importer."""
