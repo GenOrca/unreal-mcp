@@ -117,12 +117,18 @@ expose, an optional C++ helper (`MCPythonHelper`) is available. Full details in
 
 **Option A: Download from GitHub Releases (Recommended)**
 
-Download the latest zip from [Releases](https://github.com/GenOrca/unreal-mcp/releases) and extract it anywhere. Then copy `Plugins/UnrealMCPython/` into your project's `Plugins/` folder:
+Each [release](https://github.com/GenOrca/unreal-mcp/releases) ships two kinds of plugin asset — pick whichever fits:
+
+- **`UnrealMCPython_<engine>_<version>.zip`** (e.g. `UnrealMCPython_5.7_2.2.0.zip`) — **precompiled** for that exact UE version. No C++ toolchain required; just drop it in.
+- **`UnrealMCPython-v<version>.zip`** — **source only** (the CI release pipeline runs on Linux and does not compile the C++ module). Unreal builds the module on first open, which needs a C++ toolchain.
+
+Extract, then copy `Plugins/UnrealMCPython/` into your project's `Plugins/` folder:
 
 ```
 YourProject/
 └── Plugins/
     └── UnrealMCPython/
+        ├── Binaries/   (precompiled zip only)
         ├── Source/
         ├── Content/
         └── UnrealMCPython.uplugin
@@ -131,7 +137,7 @@ YourProject/
 Keep the `mcp-server/` folder from the zip in a convenient location — you'll need its path in Step 3.
 
 > [!NOTE]
-> The release zip ships the plugin as **source** (no precompiled binary — the release pipeline runs on Linux and does not build the C++ module). On first open, Unreal offers to build the `UnrealMCPython` module for you; this needs a C++ toolchain (on Windows, Visual Studio with the "Game development with C++" workload). Binaries are engine-version-specific, so source distribution keeps the plugin portable across UE versions.
+> Precompiled binaries are engine-version-specific. If there's no `_<your engine>_` zip for your version, use the source zip and let Unreal compile it on first open (Windows: Visual Studio with the "Game development with C++" workload). Maintainers build the per-version binaries locally with `tools/build-plugin.ps1` (the CI pipeline can't — GitHub-hosted runners have no Unreal Engine).
 
 **Option B: Install from [Fab](https://fab.com/s/aed5f75d50b2)**
 
