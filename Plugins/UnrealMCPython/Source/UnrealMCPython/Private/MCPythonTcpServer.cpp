@@ -147,7 +147,9 @@ FString ConvertJsonValueToPythonLiteral(const TSharedPtr<FJsonValue>& JsonVal)
             for (const auto& Pair : Object->Values) {
                 if (!bFirst) DictLiteral += TEXT(", ");
                 
-                FString KeyString = Pair.Key;
+                // UE 5.7: FJsonObject::Values key is FString; UE 5.8: UE::FSharedString.
+                // operator* yields const TCHAR* on both, so this builds on either engine.
+                FString KeyString = *Pair.Key;
                 // Escape key string as well (similar to EJson::String case)
                 KeyString = KeyString.Replace(TEXT("\\"), TEXT("\\\\"));
                 KeyString = KeyString.Replace(TEXT("\'"), TEXT("\\\'"));

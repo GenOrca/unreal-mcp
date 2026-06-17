@@ -660,7 +660,8 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         const TSharedPtr<FJsonObject>& PinDefaults = NodeJson->GetObjectField(TEXT("pin_defaults"));
         for (auto& Pair : PinDefaults->Values)
         {
-            UEdGraphPin* Pin = FindPinByName(NewNode, Pair.Key, EGPD_Input);
+            // *Pair.Key yields const TCHAR* on both UE 5.7 (FString key) and 5.8 (UE::FSharedString key).
+            UEdGraphPin* Pin = FindPinByName(NewNode, FString(*Pair.Key), EGPD_Input);
             if (Pin)
             {
                 FString Value;
