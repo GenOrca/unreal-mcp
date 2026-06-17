@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unrealmcp"
-version = "2.1.0"
+version = "2.2.0"
 description = "MCP Server for Unreal Engine integration"
 authors = [
     {name = "Jinhyung Ahn", email = "zenoengine@gmail.com"}

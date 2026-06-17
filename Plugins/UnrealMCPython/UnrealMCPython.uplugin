@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 4,
-	"VersionName": "2.1.0",
+	"Version": 5,
+	"VersionName": "2.2.0",
 	"FriendlyName": "UnrealMCPython",
 	"Description": "",
 	"Category": "Other",
