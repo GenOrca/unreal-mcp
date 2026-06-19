@@ -11,7 +11,6 @@
 	"MarketplaceURL": "",
 	"FabURL": "com.epicgames.launcher://ue/Fab/product/5cd0eb75-3c66-43bf-88ac-693be184fb95",
 	"SupportURL": "",
-	"EngineVersion": "5.7.0",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"Installed": true,
