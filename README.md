@@ -117,10 +117,10 @@ expose, an optional C++ helper (`MCPythonHelper`) is available. Full details in
 
 **Option A: Download from GitHub Releases (Recommended)**
 
-Each [release](https://github.com/GenOrca/unreal-mcp/releases) ships two kinds of plugin asset — pick whichever fits:
+Each [release](https://github.com/GenOrca/unreal-mcp/releases) ships two kinds of plugin asset. **Most users want the precompiled one for their exact engine version:**
 
-- **`UnrealMCPython_<engine>_<version>.zip`** (e.g. `UnrealMCPython_5.7_2.2.0.zip`) — **precompiled** for that exact UE version. No C++ toolchain required; just drop it in.
-- **`UnrealMCPython-v<version>.zip`** — **source only** (the CI release pipeline runs on Linux and does not compile the C++ module). Unreal builds the module on first open, which needs a C++ toolchain.
+- ✅ **`UnrealMCPython_<engine>_<version>.zip`** (e.g. `UnrealMCPython_5.8_2.2.0.zip`) — **precompiled** for that exact UE version. No C++ toolchain, no rebuild — just drop it in and launch. **Pick the one matching your engine version.**
+- 🛠️ **`UnrealMCPython-v<version>.zip`** — **source only**, for C++ developers (the CI release pipeline runs on Linux and does not compile the C++ module). Unreal tries to *compile* it on first open, which **requires Visual Studio with the "Game development with C++" workload**. Without that toolchain the build fails and the editor closes — so don't use this one unless you intend to compile.
 
 Extract, then copy `Plugins/UnrealMCPython/` into your project's `Plugins/` folder:
 
@@ -137,7 +137,10 @@ YourProject/
 Keep the `mcp-server/` folder from the zip in a convenient location — you'll need its path in Step 3.
 
 > [!NOTE]
-> Precompiled binaries are engine-version-specific. If there's no `_<your engine>_` zip for your version, use the source zip and let Unreal compile it on first open (Windows: Visual Studio with the "Game development with C++" workload). Maintainers build the per-version binaries locally with `tools/build-plugin.ps1` (the CI pipeline can't — GitHub-hosted runners have no Unreal Engine).
+> Precompiled binaries are engine-version-specific. If there's no `_<your engine>_` zip for your version, either ask for one in an issue or use the source zip and let Unreal compile it on first open (Windows: Visual Studio with the "Game development with C++" workload). Maintainers build the per-version binaries locally with `tools/build-plugin.ps1` (the CI pipeline can't — GitHub-hosted runners have no Unreal Engine).
+
+> [!WARNING]
+> **Seeing `'UnrealMCPython' was designed for build 5.7.0 … load anyway?` or a rebuild that fails and closes the editor?** You downloaded the **source** zip (or a binary for a different engine version). Download the **`UnrealMCPython_<your engine>_<version>.zip`** that matches your engine instead — it loads without compiling. (Source builds from releases ≤ 2.2.0 also pin an old engine version; this is fixed on `main`.)
 
 **Option B: Install from [Fab](https://fab.com/s/aed5f75d50b2)**
 
