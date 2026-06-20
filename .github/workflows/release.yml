@@ -73,8 +73,10 @@ jobs:
 
       - name: Package zip
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          ZIP_NAME="UnrealMCPython-${TAG}.zip"
+          VER="${{ steps.version.outputs.ver }}"
+          # Source-only zip; named to match the precompiled binaries
+          # (UnrealMCPython_<engine>_<ver>.zip) so the "Source" variant is obvious.
+          ZIP_NAME="UnrealMCPython_Source_${VER}.zip"
           STAGE_DIR=$(mktemp -d)
           TARGET="$STAGE_DIR/UnrealMCPython"
           mkdir -p "$TARGET"

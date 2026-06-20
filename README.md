@@ -120,7 +120,7 @@ expose, an optional C++ helper (`MCPythonHelper`) is available. Full details in
 Each [release](https://github.com/GenOrca/unreal-mcp/releases) ships two kinds of plugin asset. **Most users want the precompiled one for their exact engine version:**
 
 - ✅ **`UnrealMCPython_<engine>_<version>.zip`** (e.g. `UnrealMCPython_5.8_2.2.0.zip`) — **precompiled** for that exact UE version. No C++ toolchain, no rebuild — just drop it in and launch. **Pick the one matching your engine version.**
-- 🛠️ **`UnrealMCPython-v<version>.zip`** — **source only**, for C++ developers (the CI release pipeline runs on Linux and does not compile the C++ module). Unreal tries to *compile* it on first open, which **requires Visual Studio with the "Game development with C++" workload**. Without that toolchain the build fails and the editor closes — so don't use this one unless you intend to compile.
+- 🛠️ **`UnrealMCPython_Source_<version>.zip`** — **source only**, for C++ developers (the CI release pipeline runs on Linux and does not compile the C++ module). Unreal tries to *compile* it on first open, which **requires Visual Studio with the "Game development with C++" workload**. Without that toolchain the build fails and the editor closes — so don't use this one unless you intend to compile.
 
 Extract, then copy `Plugins/UnrealMCPython/` into your project's `Plugins/` folder:
 
