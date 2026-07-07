@@ -264,7 +264,22 @@ static FString BuildStateMachineFromSpec(UAnimBlueprint* AnimBP, const TSharedPt
             FBlueprintEditorUtils::RenameGraph(Bound, SD.Name);
         if (SD.Seq)
         {
-            if (UAnimGraphNode_StateResult* SR = State->GetResultNodeInsideState())
+#if ENGINE_MAJOR_VERSION > 5 || (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+            // UAnimStateNode::GetResultNodeInsideState() was added in UE 5.7.
+            UAnimGraphNode_StateResult* SR = State->GetResultNodeInsideState();
+#else
+            // UE 5.6 and earlier: find the state result by scanning the bound graph.
+            UAnimGraphNode_StateResult* SR = nullptr;
+            if (UEdGraph* Bound = State->GetBoundGraph())
+            {
+                for (UEdGraphNode* N : Bound->Nodes)
+                {
+                    if ((SR = Cast<UAnimGraphNode_StateResult>(N)) != nullptr)
+                        break;
+                }
+            }
+#endif
+            if (SR)
             {
                 UEdGraphPin* SRIn = FindPinByName(SR, TEXT("Result"), EGPD_Input);
                 SpawnSequencePlayer(State->GetBoundGraph(), SD.Seq, -400, 0, SRIn);
