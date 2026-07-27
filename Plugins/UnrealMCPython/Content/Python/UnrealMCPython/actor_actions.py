@@ -270,36 +270,42 @@ def ue_set_transform(actor_label: str = None, location: list = None, rotation: l
         if not actor_to_modify:
             return json.dumps({"success": False, "message": f"Actor with label \'{actor_label}\' not found."})
 
-        with unreal.ScopedEditorTransaction(transaction_description) as trans:
-            modified_properties = []
-            if location is not None:
-                if len(location) == 3:
-                    new_loc = unreal.Vector(float(location[0]), float(location[1]), float(location[2]))
-                    actor_to_modify.set_actor_location(new_loc, False, False) # bSweep, bTeleport
-                    modified_properties.append("location")
-                else:
-                    return json.dumps({"success": False, "message": "Invalid location format. Expected list of 3 floats."})
+        new_loc = None
+        new_rot = None
+        new_scale = None
+        modified_properties = []
 
-            if rotation is not None:
-                if len(rotation) == 3:
-                    new_rot = unreal.Rotator(float(rotation[2]), float(rotation[0]), float(rotation[1]))
-                    actor_to_modify.set_actor_rotation(new_rot, False) # bTeleport
-                    modified_properties.append("rotation")
-                else:
-                    return json.dumps({"success": False, "message": "Invalid rotation format. Expected list of 3 floats."})
+        if location is not None:
+            if len(location) != 3:
+                return json.dumps({"success": False, "message": "Invalid location format. Expected list of 3 floats."})
+            new_loc = unreal.Vector(float(location[0]), float(location[1]), float(location[2]))
+            modified_properties.append("location")
 
-            if scale is not None:
-                if len(scale) == 3:
-                    new_scale = unreal.Vector(float(scale[0]), float(scale[1]), float(scale[2]))
-                    actor_to_modify.set_actor_scale3d(new_scale)
-                    modified_properties.append("scale")
-                else:
-                    return json.dumps({"success": False, "message": "Invalid scale format. Expected list of 3 floats."})
-            
-            if not modified_properties:
-                return json.dumps({"success": True, "message": f"No transform properties provided for actor \'{actor_label}\'. Actor was not modified."})
+        if rotation is not None:
+            if len(rotation) != 3:
+                return json.dumps({"success": False, "message": "Invalid rotation format. Expected list of 3 floats."})
+            new_rot = unreal.Rotator(float(rotation[2]), float(rotation[0]), float(rotation[1]))
+            modified_properties.append("rotation")
 
-            return json.dumps({"success": True, "message": f"Actor \'{actor_label}\' transform updated for: {', '.join(modified_properties)}."})
+        if scale is not None:
+            if len(scale) != 3:
+                return json.dumps({"success": False, "message": "Invalid scale format. Expected list of 3 floats."})
+            new_scale = unreal.Vector(float(scale[0]), float(scale[1]), float(scale[2]))
+            modified_properties.append("scale")
+
+        if not modified_properties:
+            return json.dumps({"success": True, "message": f"No transform properties provided for actor \'{actor_label}\'. Actor was not modified."})
+
+        with unreal.ScopedEditorTransaction(transaction_description):
+            actor_to_modify.modify()
+            if new_loc is not None:
+                actor_to_modify.set_actor_location(new_loc, False, False) # bSweep, bTeleport
+            if new_rot is not None:
+                actor_to_modify.set_actor_rotation(new_rot, False) # bTeleport
+            if new_scale is not None:
+                actor_to_modify.set_actor_scale3d(new_scale)
+
+        return json.dumps({"success": True, "message": f"Actor \'{actor_label}\' transform updated for: {', '.join(modified_properties)}."})
 
     except Exception as e:
         return json.dumps({"success": False, "message": f"Error setting transform for actor \'{actor_label}\': {str(e)}", "type": e.__name__, "traceback": traceback.format_exc()})

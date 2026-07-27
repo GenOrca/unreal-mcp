@@ -351,4 +351,24 @@ public:
     /** Deproject a viewport pixel to a world location at the given distance along the view ray. Returns JSON. */
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString ScreenToWorld(float ScreenX, float ScreenY, float Distance);
+
+    // --- Workflow context and scoped transactions --------------------------------
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString GetWorkflowEditorContext(const TArray<FString>& AssetPaths);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString BeginWorkflowTransaction(const FString& TransactionId, const FString& Description);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString CommitWorkflowTransaction(const FString& TransactionId);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString CancelWorkflowTransaction(const FString& TransactionId);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString RollbackWorkflowTransaction(const FString& TransactionId);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString UndoWorkflowTransaction(const FString& TransactionId);
 };

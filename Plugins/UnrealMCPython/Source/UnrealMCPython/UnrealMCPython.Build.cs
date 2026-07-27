@@ -47,6 +47,7 @@ public class UnrealMCPython : ModuleRules
 				"SlateCore",
 				"UnrealEd",
 				"EditorSubsystem",
+				"AssetRegistry",
 				"AssetTools",
 				"BlueprintGraph",
 				"Kismet",
