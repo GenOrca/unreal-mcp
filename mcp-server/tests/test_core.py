@@ -2,7 +2,59 @@
 
 """Unit tests for the TCP response unwrapping (offline, no Unreal)."""
 
+import asyncio
+import threading
+
+import pytest
+
+import unreal_mcp.core as core
 from unreal_mcp.core import _unwrap_result
+
+
+class _DelayedSocket:
+    def __init__(self, release):
+        self._release = release
+        self._responses = [
+            b'{"success":true,"result":"{\\"success\\":true}"}',
+            b"",
+        ]
+
+    def __enter__(self):
+        self._release.wait(timeout=1)
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def sendall(self, _value):
+        return None
+
+    def recv(self, _size):
+        return self._responses.pop(0)
+
+
+@pytest.mark.asyncio
+async def test_send_to_unreal_does_not_block_the_event_loop(monkeypatch):
+    release = threading.Event()
+    monkeypatch.setattr(
+        core.socket,
+        "create_connection",
+        lambda *_args, **_kwargs: _DelayedSocket(release),
+    )
+    timer = threading.Timer(0.3, release.set)
+    timer.start()
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    call = asyncio.create_task(core.send_to_unreal("module", "action", {}))
+    try:
+        await asyncio.sleep(0.01)
+        elapsed = loop.time() - started
+        release.set()
+        assert await call == {"success": True}
+        assert elapsed < 0.1
+    finally:
+        release.set()
+        timer.cancel()
 
 
 def test_unwraps_action_dict_from_result_string():

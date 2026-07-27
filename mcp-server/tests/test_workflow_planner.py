@@ -81,6 +81,27 @@ async def test_plan_orders_dependencies_and_collects_assets(planner):
 
 
 @pytest.mark.asyncio
+async def test_plan_rejects_preexisting_dirty_asset(planner):
+    planner.context.fingerprints["/Game/BP_Player"] = AssetFingerprint(
+        asset_path="/Game/BP_Player", exists=True, dirty=True
+    )
+    with pytest.raises(WorkflowPlanningError) as caught:
+        await planner.plan(
+            [
+                ActionInvocation(
+                    id="create",
+                    domain="blueprint",
+                    action="create_blueprint",
+                    params={"asset_path": "/Game/BP_Player"},
+                )
+            ]
+        )
+    error = caught.value.result.errors[0]
+    assert error.code == "PRECONDITION_FAILED"
+    assert error.details["dirty_assets"] == ["/Game/BP_Player"]
+
+
+@pytest.mark.asyncio
 async def test_plan_rejects_cycle(planner):
     with pytest.raises(ValueError, match="dependency cycle"):
         await planner.plan(
@@ -167,3 +188,24 @@ async def test_verify_preconditions_reports_all_stale_state(planner):
         "current_map",
         "asset_fingerprints./Game/BP_Player",
     }
+
+
+@pytest.mark.asyncio
+async def test_apply_preflight_rejects_asset_dirtied_after_plan(planner):
+    plan = await planner.plan(
+        [
+            ActionInvocation(
+                id="create",
+                domain="blueprint",
+                action="create_blueprint",
+                params={"asset_path": "/Game/BP_Player"},
+            )
+        ]
+    )
+    planner.context.fingerprints["/Game/BP_Player"] = AssetFingerprint(
+        asset_path="/Game/BP_Player", exists=True, dirty=True
+    )
+    result = await planner.verify_preconditions(plan)
+    assert result.success is False
+    assert result.errors[0].code == "PRECONDITION_FAILED"
+    assert result.errors[0].details["dirty_assets"] == ["/Game/BP_Player"]

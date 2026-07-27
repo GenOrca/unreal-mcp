@@ -127,6 +127,24 @@ class WorkflowPlanner:
             )
             for path in sorted(all_asset_paths)
         }
+        dirty_assets = sorted(
+            path
+            for path, fingerprint in fingerprints.items()
+            if fingerprint.exists and fingerprint.dirty
+        )
+        if dirty_assets:
+            raise WorkflowPlanningError(
+                error_result(
+                    code=ErrorCode.PRECONDITION_FAILED,
+                    message="Workflow cannot plan changes to dirty assets",
+                    path="operations",
+                    retryable=True,
+                    hint=(
+                        "Save or revert the listed assets, then create a new plan."
+                    ),
+                    details={"dirty_assets": dirty_assets},
+                )
+            )
         predicted_changes = self._predict_changes(steps, fingerprints)
         plan = WorkflowPlan(
             id=uuid4().hex,
@@ -160,12 +178,30 @@ class WorkflowPlanner:
         current_fingerprints = await self.context.get_fingerprints(
             sorted(plan.asset_fingerprints)
         )
-        for path, expected_model in plan.asset_fingerprints.items():
-            actual_model = AssetFingerprint.model_validate(
+        validated_current_fingerprints = {
+            path: AssetFingerprint.model_validate(
                 current_fingerprints.get(
                     path, AssetFingerprint(asset_path=path, exists=False)
                 )
             )
+            for path in sorted(plan.asset_fingerprints)
+        }
+        dirty_assets = sorted(
+            path
+            for path, fingerprint in validated_current_fingerprints.items()
+            if fingerprint.exists and fingerprint.dirty
+        )
+        if dirty_assets:
+            return error_result(
+                code=ErrorCode.PRECONDITION_FAILED,
+                message="Workflow cannot apply changes to dirty assets",
+                path="plan_id",
+                retryable=True,
+                hint="Save or revert the listed assets, then create a new plan.",
+                details={"dirty_assets": dirty_assets},
+            )
+        for path, expected_model in plan.asset_fingerprints.items():
+            actual_model = validated_current_fingerprints[path]
             expected = expected_model.model_dump(mode="json")
             actual = actual_model.model_dump(mode="json")
             if actual != expected:

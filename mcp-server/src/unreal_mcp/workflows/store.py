@@ -3,7 +3,11 @@
 import asyncio
 from typing import Any
 
-from unreal_mcp.workflows.models import WorkflowPlan, WorkflowStatus
+from unreal_mcp.workflows.models import (
+    AssetFingerprint,
+    WorkflowPlan,
+    WorkflowStatus,
+)
 
 
 class WorkflowStore:
@@ -52,4 +56,40 @@ class WorkflowStore:
             except KeyError as exc:
                 raise KeyError(f"Unknown workflow plan '{plan_id}'") from exc
             plan.step_results.append(dict(result))
+            return plan.model_copy(deep=True)
+
+    async def update_runtime(
+        self,
+        plan_id: str,
+        *,
+        status: WorkflowStatus | None = None,
+        transaction_id: str | None = None,
+        undo_token: str | None = None,
+        post_state_fingerprints: dict[str, AssetFingerprint] | None = None,
+        residual_fingerprints: dict[str, AssetFingerprint] | None = None,
+        step_result: dict[str, Any] | None = None,
+    ) -> WorkflowPlan:
+        async with self._lock:
+            try:
+                plan = self._plans[plan_id]
+            except KeyError as exc:
+                raise KeyError(f"Unknown workflow plan '{plan_id}'") from exc
+            if status is not None:
+                plan.status = status
+            if transaction_id is not None:
+                plan.transaction_id = transaction_id
+            if undo_token is not None:
+                plan.undo_token = undo_token
+            if post_state_fingerprints is not None:
+                plan.post_state_fingerprints = {
+                    path: AssetFingerprint.model_validate(fingerprint)
+                    for path, fingerprint in post_state_fingerprints.items()
+                }
+            if residual_fingerprints is not None:
+                plan.residual_fingerprints = {
+                    path: AssetFingerprint.model_validate(fingerprint)
+                    for path, fingerprint in residual_fingerprints.items()
+                }
+            if step_result is not None:
+                plan.step_results.append(dict(step_result))
             return plan.model_copy(deep=True)

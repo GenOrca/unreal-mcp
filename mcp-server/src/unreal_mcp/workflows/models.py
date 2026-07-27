@@ -78,6 +78,13 @@ class ChangeRecord(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class VerificationResult(BaseModel):
+    success: bool = True
+    summary: str = "Verification passed."
+    warnings: list[dict[str, Any]] = Field(default_factory=list)
+    errors: list[ErrorDetail] = Field(default_factory=list)
+
+
 class WorkflowPlan(BaseModel):
     id: str
     status: WorkflowStatus
@@ -92,6 +99,13 @@ class WorkflowPlan(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     confirmation_token: str | None = None
     undo_token: str | None = None
+    transaction_id: str | None = None
+    post_state_fingerprints: dict[str, AssetFingerprint] = Field(
+        default_factory=dict
+    )
+    residual_fingerprints: dict[str, AssetFingerprint] = Field(
+        default_factory=dict
+    )
     step_results: list[dict[str, Any]] = Field(default_factory=list)
 
     @classmethod
@@ -113,6 +127,9 @@ class WorkflowPlan(BaseModel):
                 "created_at",
                 "confirmation_token",
                 "undo_token",
+                "transaction_id",
+                "post_state_fingerprints",
+                "residual_fingerprints",
                 "step_results",
             },
         )

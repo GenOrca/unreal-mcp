@@ -1,5 +1,6 @@
 # Copyright (c) 2025 GenOrca. All Rights Reserved.
 
+import asyncio
 import socket
 import json
 import sys
@@ -56,7 +57,9 @@ def _unwrap_result(response: dict) -> dict:
 
 
 # Core send_to_unreal function
-async def send_to_unreal(action_module: str, action_name: str, params: dict) -> dict:
+def _send_to_unreal_sync(
+    action_module: str, action_name: str, params: dict
+) -> dict:
     """
     Sends a command to the Unreal Engine Python script via socket communication.
     Args:
@@ -125,6 +128,15 @@ async def send_to_unreal(action_module: str, action_name: str, params: dict) -> 
         raise
     except Exception as e: # Catch any other unexpected errors
         raise UnrealExecutionError(f"An unexpected error occurred in send_to_unreal ({HOST}:{PORT}): {type(e).__name__} - {e}", details={"host": HOST, "port": PORT, "error_type": type(e).__name__})
+
+
+async def send_to_unreal(
+    action_module: str, action_name: str, params: dict
+) -> dict:
+    """Runs the blocking Unreal socket exchange without blocking the event loop."""
+    return await asyncio.to_thread(
+        _send_to_unreal_sync, action_module, action_name, params
+    )
 
 
 async def send_python_exec(code: str) -> dict:

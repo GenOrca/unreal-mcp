@@ -2,10 +2,24 @@
 
 import base64
 from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from hashlib import sha256
 import hmac
 import json
 from secrets import token_urlsafe
+
+
+class TokenErrorReason(StrEnum):
+    INVALID = "invalid"
+    EXPIRED = "expired"
+    BINDING = "binding"
+    USED = "used"
+
+
+class TokenValidationError(ValueError):
+    def __init__(self, reason: TokenErrorReason, message: str):
+        self.reason = reason
+        super().__init__(message)
 
 
 def _b64encode(value: bytes) -> str:
@@ -106,31 +120,45 @@ class TokenService:
         self._prune(current)
         try:
             payload_segment, signature_segment = token.split(".")
+            payload_bytes = _b64decode(payload_segment)
+            supplied_signature = _b64decode(signature_segment)
         except ValueError as exc:
-            raise ValueError("token format is invalid") from exc
-        payload_bytes = _b64decode(payload_segment)
-        supplied_signature = _b64decode(signature_segment)
+            raise TokenValidationError(
+                TokenErrorReason.INVALID, "token format is invalid"
+            ) from exc
         expected_signature = hmac.new(self._secret, payload_bytes, sha256).digest()
         if not hmac.compare_digest(supplied_signature, expected_signature):
-            raise ValueError("token signature mismatch")
+            raise TokenValidationError(
+                TokenErrorReason.INVALID, "token signature mismatch"
+            )
         try:
             payload = json.loads(payload_bytes)
         except Exception as exc:
-            raise ValueError("token payload is invalid") from exc
+            raise TokenValidationError(
+                TokenErrorReason.INVALID, "token payload is invalid"
+            ) from exc
 
         if current > float(payload.get("expires_at", 0)):
-            raise ValueError("token expired")
+            raise TokenValidationError(
+                TokenErrorReason.EXPIRED, "token expired"
+            )
         if (
             payload.get("kind") != kind
             or payload.get("plan_id") != plan_id
             or payload.get("digest") != digest
         ):
-            raise ValueError("token binding mismatch")
+            raise TokenValidationError(
+                TokenErrorReason.BINDING, "token binding mismatch"
+            )
         nonce = payload.get("nonce")
         if not isinstance(nonce, str) or not nonce:
-            raise ValueError("token payload is invalid")
+            raise TokenValidationError(
+                TokenErrorReason.INVALID, "token payload is invalid"
+            )
         if nonce in self._consumed:
-            raise ValueError("token already used")
+            raise TokenValidationError(
+                TokenErrorReason.USED, "token already used"
+            )
         self._consumed[nonce] = float(payload["expires_at"])
         return True
 
