@@ -50,7 +50,7 @@ def test_tampered_token_is_rejected():
     service = TokenService(secret=b"x" * 32, ttl=timedelta(minutes=10))
     now = datetime(2026, 7, 27, tzinfo=UTC)
     token = service.issue_confirmation("plan-1", "digest-1", now=now)
-    replacement = "A" if token[-1] != "A" else "B"
+    replacement = "Q" if token[-1] == "A" else "A"
     with pytest.raises(ValueError, match="signature"):
         service.consume_confirmation(
             token[:-1] + replacement, "plan-1", "digest-1", now=now
