@@ -73,7 +73,7 @@ def _standard_action_pairs():
     """Every (domain, action) routed via the standard path (excludes hand-written domains)."""
     pairs = []
     for domain in CATALOG:
-        if domain in ("util", "vision"):
+        if domain in ("util", "vision", "workflow"):
             continue  # special-cased handlers
         for action in CATALOG[domain]:
             pairs.append((domain, action))
@@ -175,3 +175,17 @@ def test_util_unknown_action(recorder):
     result = run(disp.util(action="nope", params={}))
     assert result["success"] is False
     assert "Unknown action" in result["message"]
+
+
+def test_workflow_list_actions_is_server_local(monkeypatch, recorder):
+    async def unexpected_handle(*_args, **_kwargs):
+        raise AssertionError("list_actions must not enter WorkflowHandler")
+
+    monkeypatch.setattr(disp._workflow_handler, "handle", unexpected_handle)
+    result = run(disp.workflow(action="list_actions", params={}))
+    assert result == {
+        "success": True,
+        "domain": "workflow",
+        "actions": CATALOG["workflow"],
+    }
+    assert recorder == []

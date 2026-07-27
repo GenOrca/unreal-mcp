@@ -39,7 +39,37 @@ SERVER_LOCAL_TESTS = {
             "test_discovery.py",
             "test_capabilities_succeeds_when_unreal_is_offline",
         ),
-    }
+    },
+    "workflow": {
+        "plan": (
+            "test_workflow_handler.py",
+            "test_workflow_plan_routes_valid_operations",
+        ),
+        "apply": (
+            "test_workflow_handler.py",
+            "test_workflow_apply_starts_background_by_default",
+        ),
+        "get": (
+            "test_workflow_handler.py",
+            "test_workflow_get_returns_stored_runtime_state",
+        ),
+        "cancel": (
+            "test_workflow_handler.py",
+            "test_workflow_cancel_sets_executor_event",
+        ),
+        "undo": (
+            "test_workflow_handler.py",
+            "test_workflow_undo_routes_signed_token",
+        ),
+        "plan_gameplay_foundation": (
+            "test_workflow_handler.py",
+            "test_workflow_plan_gameplay_foundation_uses_installed_hook",
+        ),
+        "verify_gameplay_foundation": (
+            "test_workflow_handler.py",
+            "test_workflow_verify_gameplay_foundation_uses_installed_hook",
+        ),
+    },
 }
 SPECIAL = {domain: set(actions) for domain, actions in SERVER_LOCAL_TESTS.items()}
 

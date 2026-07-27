@@ -52,6 +52,13 @@ def test_in_memory_client_lists_tools():
     assert {tool.name for tool in tools} == set(CATALOG)
 
 
+def test_workflow_tool_is_optional_task_with_injected_progress():
+    tools = {tool.name: tool for tool in run(dispatcher_mcp.list_tools())}
+    workflow = tools["workflow"]
+    assert workflow.task_config.mode == "optional"
+    assert set(workflow.parameters["properties"]) == {"action", "params"}
+
+
 def test_legacy_namespace_tool_golden_is_unchanged():
     golden_path = Path(__file__).parent / "golden" / "namespace_tools_v2.json"
     expected = {

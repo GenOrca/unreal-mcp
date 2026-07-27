@@ -13,14 +13,17 @@ no hand transcription. This file never grows when actions are added.
 """
 
 import base64
+from datetime import timedelta
 import json
 import logging
 import re
+from secrets import token_bytes
 import traceback
 from typing import Annotated
 from jsonschema import Draft202012Validator
 from pydantic import Field
 from fastmcp import FastMCP
+from fastmcp.dependencies import Progress
 from fastmcp.utilities.types import Image
 
 from unreal_mcp.core import send_to_unreal, UnrealExecutionError, send_python_exec, send_livecoding_compile
@@ -32,6 +35,12 @@ from unreal_mcp.errors import error_result
 from unreal_mcp.legacy_namespace_contract import LEGACY_NAMESPACE_DESCRIPTIONS
 from unreal_mcp.policy import DispatchDecision, SafetyPolicy
 from unreal_mcp.registry import ActionRegistry
+from unreal_mcp.workflows.backend import UnrealWorkflowBackend
+from unreal_mcp.workflows.executor import WorkflowExecutor
+from unreal_mcp.workflows.handler import WorkflowHandler
+from unreal_mcp.workflows.planner import WorkflowPlanner
+from unreal_mcp.workflows.store import WorkflowStore
+from unreal_mcp.workflows.tokens import TokenService
 
 dispatcher_mcp = FastMCP(
     name="UnrealMCP",
@@ -44,7 +53,7 @@ dispatcher_mcp = FastMCP(
 
 # Domains using standard python_call routing. util and vision have hand-written
 # handlers (special TCP types / MCP Image return).
-_SPECIAL_DOMAINS = {"util", "vision"}
+_SPECIAL_DOMAINS = {"util", "vision", "workflow"}
 _STANDARD_DOMAINS = [d for d in CATALOG if d not in _SPECIAL_DOMAINS]
 _LOCAL_ACTIONS = {
     "util": frozenset(
@@ -55,7 +64,18 @@ _LOCAL_ACTIONS = {
             "describe_action",
             "get_capabilities",
         }
-    )
+    ),
+    "workflow": frozenset(
+        {
+            "plan",
+            "apply",
+            "get",
+            "cancel",
+            "undo",
+            "plan_gameplay_foundation",
+            "verify_gameplay_foundation",
+        }
+    ),
 }
 _registry = ActionRegistry()
 _discovery = DiscoveryService(_registry)
@@ -63,6 +83,30 @@ _settings = load_settings()
 _policy = SafetyPolicy(_settings.safety_mode)
 _runtime_capabilities = {"ue_version": None, "plugins": {}}
 _logger = logging.getLogger(__name__)
+_workflow_backend = UnrealWorkflowBackend()
+_workflow_store = WorkflowStore()
+_workflow_tokens = TokenService(
+    secret=token_bytes(32), ttl=timedelta(minutes=10)
+)
+_workflow_planner = WorkflowPlanner(
+    _registry,
+    _workflow_backend,
+    token_service=_workflow_tokens,
+    store=_workflow_store,
+    safety_mode=_settings.safety_mode,
+)
+_workflow_executor = WorkflowExecutor(
+    _workflow_planner,
+    _workflow_backend,
+    _workflow_store,
+    _workflow_tokens,
+)
+_workflow_handler = WorkflowHandler(
+    _registry,
+    _workflow_planner,
+    _workflow_executor,
+    _workflow_store,
+)
 
 
 @dispatcher_mcp.resource("unreal://catalog")
@@ -277,6 +321,28 @@ def _make_handler(domain: str):
 
 for _domain in _STANDARD_DOMAINS:
     dispatcher_mcp.tool(name=_domain, description=_desc(_domain))(_make_handler(_domain))
+
+
+@dispatcher_mcp.tool(
+    name="workflow", description=_desc("workflow"), task=True
+)
+async def workflow(
+    action: Annotated[
+        str, Field(description="Workflow action name.")
+    ],
+    params: Annotated[
+        dict, Field(description="Workflow action parameters.")
+    ]
+    | None = None,
+    progress: Progress = Progress(),
+) -> dict:
+    if action == "list_actions":
+        return {
+            "success": True,
+            "domain": "workflow",
+            "actions": CATALOG["workflow"],
+        }
+    return await _workflow_handler.handle(action, params or {}, progress)
 
 
 # ─── util: special routing (execute_python / livecoding_compile use dedicated TCP types) ──

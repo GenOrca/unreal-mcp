@@ -7,8 +7,22 @@ from jsonschema import Draft202012Validator
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from generate_catalog import build_registry
+from generate_catalog import build, build_registry
 from unreal_mcp.contracts import ToolResult
+
+
+def test_workflow_domain_exposes_only_server_local_actions():
+    expected = {
+        "plan",
+        "apply",
+        "get",
+        "cancel",
+        "undo",
+        "plan_gameplay_foundation",
+        "verify_gameplay_foundation",
+    }
+    assert set(build()["workflow"]) == expected
+    assert set(build_registry()["workflow"]) == expected
 
 
 def test_every_catalog_action_has_complete_registry_spec():

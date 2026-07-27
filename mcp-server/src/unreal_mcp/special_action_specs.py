@@ -148,5 +148,244 @@ SPECIAL_ACTION_SPECS = {
                 "additionalProperties": True,
             },
         },
-    }
+    },
+    "workflow": {
+        "plan": {
+            "title": "Plan Unreal Workflow",
+            "description": "Validate and sign a dependency-ordered Unreal workflow plan.",
+            "effect": "read",
+            "risk": "low",
+            "result_kind": "json",
+            "idempotent": True,
+            "supports_preview": True,
+            "supports_undo": False,
+            "requires_confirmation": False,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "examples": [
+                {
+                    "action": "plan",
+                    "params": {
+                        "operations": [
+                            {
+                                "id": "create-player",
+                                "domain": "blueprint",
+                                "action": "create_blueprint",
+                                "params": {
+                                    "asset_path": "/Game/BP_Player"
+                                },
+                                "depends_on": [],
+                            }
+                        ]
+                    },
+                }
+            ],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "operations": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string", "minLength": 1},
+                                "domain": {"type": "string", "minLength": 1},
+                                "action": {"type": "string", "minLength": 1},
+                                "params": {"type": "object", "default": {}},
+                                "depends_on": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "default": [],
+                                },
+                            },
+                            "required": ["id", "domain", "action"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "allow_non_undoable": {
+                        "type": "boolean",
+                        "default": False,
+                    },
+                },
+                "required": ["operations"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "apply": {
+            "title": "Apply Unreal Workflow",
+            "description": "Execute a confirmed workflow with progress and recovery.",
+            "effect": "write",
+            "risk": "high",
+            "result_kind": "json",
+            "idempotent": False,
+            "supports_preview": False,
+            "supports_undo": True,
+            "requires_confirmation": True,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "plan_id": {"type": "string", "minLength": 1},
+                    "confirmation_token": {
+                        "type": "string",
+                        "minLength": 1,
+                    },
+                    "wait_for_completion": {
+                        "type": "boolean",
+                        "default": False,
+                    },
+                },
+                "required": ["plan_id", "confirmation_token"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "get": {
+            "title": "Get Unreal Workflow",
+            "description": "Return a workflow plan and its latest runtime state.",
+            "effect": "read",
+            "risk": "low",
+            "result_kind": "json",
+            "idempotent": True,
+            "supports_preview": False,
+            "supports_undo": False,
+            "requires_confirmation": False,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "plan_id": {"type": "string", "minLength": 1}
+                },
+                "required": ["plan_id"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "cancel": {
+            "title": "Cancel Unreal Workflow",
+            "description": "Request cancellation at the next safe workflow boundary.",
+            "effect": "write",
+            "risk": "medium",
+            "result_kind": "json",
+            "idempotent": True,
+            "supports_preview": False,
+            "supports_undo": False,
+            "requires_confirmation": False,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "plan_id": {"type": "string", "minLength": 1}
+                },
+                "required": ["plan_id"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "undo": {
+            "title": "Undo Unreal Workflow",
+            "description": "Guard and undo the committed transaction bound to a workflow.",
+            "effect": "destructive",
+            "risk": "high",
+            "result_kind": "json",
+            "idempotent": False,
+            "supports_preview": False,
+            "supports_undo": False,
+            "requires_confirmation": True,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "plan_id": {"type": "string", "minLength": 1},
+                    "undo_token": {"type": "string", "minLength": 1},
+                },
+                "required": ["plan_id", "undo_token"],
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "plan_gameplay_foundation": {
+            "title": "Plan Gameplay Foundation",
+            "description": "Build the installed gameplay-foundation workflow recipe.",
+            "effect": "read",
+            "risk": "low",
+            "result_kind": "json",
+            "idempotent": True,
+            "supports_preview": True,
+            "supports_undo": False,
+            "requires_confirmation": False,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "spec": {"type": "object", "default": {}}
+                },
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+        "verify_gameplay_foundation": {
+            "title": "Verify Gameplay Foundation",
+            "description": "Verify gameplay-foundation assets against the installed recipe.",
+            "effect": "read",
+            "risk": "low",
+            "result_kind": "json",
+            "idempotent": True,
+            "supports_preview": False,
+            "supports_undo": False,
+            "requires_confirmation": False,
+            "ue_versions": ["5.6", "5.7", "5.8"],
+            "required_plugins": [],
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "spec": {"type": "object", "default": {}}
+                },
+                "additionalProperties": False,
+            },
+            "output_schema": {
+                "type": "object",
+                "properties": {"success": {"type": "boolean"}},
+                "required": ["success"],
+                "additionalProperties": True,
+            },
+        },
+    },
 }

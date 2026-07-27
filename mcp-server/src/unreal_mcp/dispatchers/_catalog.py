@@ -1070,4 +1070,34 @@ CATALOG = {
             'doc': "Captures the active level viewport (3D scene only) as a PNG, returned base64 in 'image_data'.",
         },
     },
+    'workflow': {
+        'apply': {
+            'params': 'plan_id, confirmation_token, wait_for_completion=False',
+            'doc': 'Executes a confirmed workflow in the background or waits for completion.',
+        },
+        'cancel': {
+            'params': 'plan_id',
+            'doc': 'Requests cooperative cancellation at the next safe step boundary.',
+        },
+        'get': {
+            'params': 'plan_id',
+            'doc': 'Returns the current plan, runtime status, and recovery state.',
+        },
+        'plan': {
+            'params': 'operations, allow_non_undoable=False',
+            'doc': 'Builds a validated, dependency-ordered workflow plan and confirmation token.',
+        },
+        'plan_gameplay_foundation': {
+            'params': 'spec={}',
+            'doc': 'Builds the gameplay-foundation workflow recipe when that capability is installed.',
+        },
+        'undo': {
+            'params': 'plan_id, undo_token',
+            'doc': 'Performs guarded undo for a verified committed workflow transaction.',
+        },
+        'verify_gameplay_foundation': {
+            'params': 'spec={}',
+            'doc': 'Verifies a gameplay foundation against the installed recipe contract.',
+        },
+    },
 }

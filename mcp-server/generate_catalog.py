@@ -56,7 +56,10 @@ DOMAINS = [
     "umg",
     "util",
     "vision",
+    "workflow",
 ]
+
+SPECIAL_ONLY_DOMAINS = {"workflow"}
 
 # Dispatcher-only actions still need their exact legacy parameter strings.
 EXTRA_ACTIONS = {
@@ -81,7 +84,37 @@ EXTRA_ACTIONS = {
             "params": "",
             "doc": "Reports MCP server, Unreal editor, plugin, and safety capabilities.",
         },
-    }
+    },
+    "workflow": {
+        "plan": {
+            "params": "operations, allow_non_undoable=False",
+            "doc": "Builds a validated, dependency-ordered workflow plan and confirmation token.",
+        },
+        "apply": {
+            "params": "plan_id, confirmation_token, wait_for_completion=False",
+            "doc": "Executes a confirmed workflow in the background or waits for completion.",
+        },
+        "get": {
+            "params": "plan_id",
+            "doc": "Returns the current plan, runtime status, and recovery state.",
+        },
+        "cancel": {
+            "params": "plan_id",
+            "doc": "Requests cooperative cancellation at the next safe step boundary.",
+        },
+        "undo": {
+            "params": "plan_id, undo_token",
+            "doc": "Performs guarded undo for a verified committed workflow transaction.",
+        },
+        "plan_gameplay_foundation": {
+            "params": "spec={}",
+            "doc": "Builds the gameplay-foundation workflow recipe when that capability is installed.",
+        },
+        "verify_gameplay_foundation": {
+            "params": "spec={}",
+            "doc": "Verifies a gameplay foundation against the installed recipe contract.",
+        },
+    },
 }
 
 _MISSING = object()
@@ -148,6 +181,14 @@ def _literal_assignment(tree: ast.Module, name: str) -> dict:
 
 def _load_action_module(domain: str) -> tuple[dict[str, ast.FunctionDef], dict]:
     path = PLUGIN_DIR / f"{domain}_actions.py"
+    if domain in SPECIAL_ONLY_DOMAINS:
+        if domain not in _special_specs():
+            raise ValueError(f"Missing server-local specs for {domain}")
+        return {}, {}
+    if not path.exists():
+        if domain in _special_specs():
+            return {}, {}
+        raise FileNotFoundError(path)
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     nodes = _action_nodes(tree)
     metadata = _literal_assignment(tree, "ACTION_METADATA")
@@ -163,7 +204,7 @@ def _load_action_module(domain: str) -> tuple[dict[str, ast.FunctionDef], dict]:
 def _extract(domain: str) -> dict:
     path = PLUGIN_DIR / f"{domain}_actions.py"
     actions: dict[str, dict] = {}
-    if path.exists():
+    if path.exists() and domain not in SPECIAL_ONLY_DOMAINS:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for action, node in _action_nodes(tree).items():
             actions[action] = {"params": _params(node), "doc": _doc(node)}
