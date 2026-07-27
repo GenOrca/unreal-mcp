@@ -29,7 +29,19 @@ PLUGIN_TESTS = (
 )
 
 # Actions not routed as ue_<action> over TCP — covered by mcp-server pytest instead.
-SPECIAL = {"util": {"execute_python", "livecoding_compile"}}
+SERVER_LOCAL_TESTS = {
+    "util": {
+        "execute_python": ("test_dispatcher.py", "test_util_execute_python"),
+        "livecoding_compile": ("test_dispatcher.py", "test_util_livecoding_compile"),
+        "search_actions": ("test_discovery.py", "test_util_search_and_describe_are_local"),
+        "describe_action": ("test_discovery.py", "test_util_search_and_describe_are_local"),
+        "get_capabilities": (
+            "test_discovery.py",
+            "test_capabilities_succeeds_when_unreal_is_offline",
+        ),
+    }
+}
+SPECIAL = {domain: set(actions) for domain, actions in SERVER_LOCAL_TESTS.items()}
 
 # ── Technical debt: actions with no in-editor behavior test yet. SHRINK over time. ──
 # Adding a new action? Write a test in test_<domain>.py instead of adding it here.
@@ -81,6 +93,19 @@ def test_no_stale_allowlist_entries():
             elif a in referenced:
                 stale.append(f"{domain}.{a} (now tested — remove from allowlist)")
     assert not stale, f"Stale KNOWN_UNTESTED entries: {stale}"
+
+
+def test_every_server_local_action_has_its_named_offline_test():
+    missing = []
+    for domain, actions in SERVER_LOCAL_TESTS.items():
+        for action, (test_file, test_name) in actions.items():
+            path = Path(__file__).parent / test_file
+            source = path.read_text(encoding="utf-8") if path.exists() else ""
+            if action not in CATALOG.get(domain, {}):
+                missing.append(f"{domain}.{action} (not in catalog)")
+            elif f"def {test_name}(" not in source:
+                missing.append(f"{domain}.{action} ({test_file}::{test_name} missing)")
+    assert not missing, f"Server-local coverage declarations are stale: {missing}"
 
 
 def test_plugin_tests_dir_exists():

@@ -967,6 +967,10 @@ CATALOG = {
         },
     },
     'util': {
+        'describe_action': {
+            'params': 'domain, action',
+            'doc': 'Returns the complete schema and safety contract for one action.',
+        },
         'execute_console_command': {
             'params': 'command',
             'doc': "Executes an editor console command (e.g. 'stat fps', 'r.ScreenPercentage 50').",
@@ -974,6 +978,10 @@ CATALOG = {
         'execute_python': {
             'params': 'code',
             'doc': 'Runs arbitrary Unreal Python code. Full API access; fastest path to prototype new actions.',
+        },
+        'get_capabilities': {
+            'params': '',
+            'doc': 'Reports MCP server, Unreal editor, plugin, and safety capabilities.',
         },
         'get_cvar': {
             'params': 'name',
@@ -985,7 +993,7 @@ CATALOG = {
         },
         'get_project_info': {
             'params': '',
-            'doc': 'Returns project name, directories, and engine version.',
+            'doc': 'Returns project, engine, plugin, and editor capability information.',
         },
         'get_viewport_camera': {
             'params': '',
@@ -1018,6 +1026,10 @@ CATALOG = {
         'screen_to_world': {
             'params': 'x, y, distance=1000.0',
             'doc': "Deprojects a viewport pixel (x, y) to a world location at 'distance' along the view ray.",
+        },
+        'search_actions': {
+            'params': "query='', domain='', effect='', risk='', required_plugin='', limit=20, cursor=''",
+            'doc': 'Searches Action Registry v2 using text, safety filters, and cursor pagination.',
         },
         'set_cvar': {
             'params': 'name, value',

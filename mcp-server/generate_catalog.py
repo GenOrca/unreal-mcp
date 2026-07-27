@@ -69,6 +69,18 @@ EXTRA_ACTIONS = {
             "params": "",
             "doc": "Triggers C++ Live Coding and waits for the compile result.",
         },
+        "search_actions": {
+            "params": "query='', domain='', effect='', risk='', required_plugin='', limit=20, cursor=''",
+            "doc": "Searches Action Registry v2 using text, safety filters, and cursor pagination.",
+        },
+        "describe_action": {
+            "params": "domain, action",
+            "doc": "Returns the complete schema and safety contract for one action.",
+        },
+        "get_capabilities": {
+            "params": "",
+            "doc": "Reports MCP server, Unreal editor, plugin, and safety capabilities.",
+        },
     }
 }
 

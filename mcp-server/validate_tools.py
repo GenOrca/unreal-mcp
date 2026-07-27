@@ -32,7 +32,22 @@ def main():
     )
     sys.stdout.write(result.stdout)
     sys.stderr.write(result.stderr)
-    sys.exit(result.returncode)
+    if result.returncode:
+        sys.exit(result.returncode)
+
+    from unreal_mcp.dispatcher import _LOCAL_ACTIONS
+    from unreal_mcp.special_action_specs import SPECIAL_ACTION_SPECS
+
+    special = {
+        domain: set(actions) for domain, actions in SPECIAL_ACTION_SPECS.items()
+    }
+    local = {domain: set(actions) for domain, actions in _LOCAL_ACTIONS.items()}
+    if special != local:
+        print(
+            "FAIL: SPECIAL_ACTION_SPECS and dispatcher local branches differ: "
+            f"special={special}, local={local}"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

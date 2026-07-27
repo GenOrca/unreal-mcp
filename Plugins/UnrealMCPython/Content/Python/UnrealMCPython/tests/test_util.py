@@ -162,7 +162,14 @@ class TestUtilActions(MCPTestCase):
         r = self.call("util_actions", "ue_get_project_info")
         self.assertSuccess(r)
         self.assertIn("engine_version", r)
+        self.assertTrue(r["project_name"])
         self.assertTrue(r["project_dir"])
+        self.assertEqual(
+            set(r["availability"]),
+            {"enhanced_input", "umg", "python_script_plugin", "live_coding"},
+        )
+        for available in r["availability"].values():
+            self.assertIsInstance(available, bool)
 
     def test_list_enum_values(self):
         r = self.call("util_actions", "ue_list_enum_values",

@@ -13,13 +13,18 @@ no hand transcription. This file never grows when actions are added.
 """
 
 import base64
+import json
 from typing import Annotated
 from pydantic import Field
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
 
 from unreal_mcp.core import send_to_unreal, UnrealExecutionError, send_python_exec, send_livecoding_compile
+from unreal_mcp.discovery import DiscoveryService
 from unreal_mcp.dispatchers._catalog import CATALOG
+from unreal_mcp.errors import error_result
+from unreal_mcp.legacy_namespace_contract import LEGACY_NAMESPACE_DESCRIPTIONS
+from unreal_mcp.registry import ActionRegistry
 
 dispatcher_mcp = FastMCP(
     name="UnrealMCP",
@@ -34,6 +39,37 @@ dispatcher_mcp = FastMCP(
 # handlers (special TCP types / MCP Image return).
 _SPECIAL_DOMAINS = {"util", "vision"}
 _STANDARD_DOMAINS = [d for d in CATALOG if d not in _SPECIAL_DOMAINS]
+_LOCAL_ACTIONS = {
+    "util": frozenset(
+        {
+            "execute_python",
+            "livecoding_compile",
+            "search_actions",
+            "describe_action",
+            "get_capabilities",
+        }
+    )
+}
+_registry = ActionRegistry()
+_discovery = DiscoveryService(_registry)
+
+
+@dispatcher_mcp.resource("unreal://catalog")
+def action_catalog_resource() -> str:
+    """Complete generated Action Registry v2 catalog."""
+    return json.dumps(
+        {"version": 2, "actions": _registry.export()},
+        ensure_ascii=False,
+    )
+
+
+@dispatcher_mcp.prompt(name="gameplay_foundation")
+def gameplay_foundation_prompt() -> str:
+    return (
+        "Inspect capabilities, call workflow plan_gameplay_foundation, "
+        "review changes and conflicts, apply with the confirmation token, "
+        "poll workflow get, then call verify_gameplay_foundation."
+    )
 
 
 def _module(domain: str) -> str:
@@ -54,6 +90,8 @@ async def _dispatch(domain: str, action: str, params: dict) -> dict:
 
 
 def _desc(domain: str) -> str:
+    if domain in LEGACY_NAMESPACE_DESCRIPTIONS:
+        return LEGACY_NAMESPACE_DESCRIPTIONS[domain]
     actions = ", ".join(CATALOG[domain])
     return f"Unreal {domain} tools. Actions: {actions}. Pass action='list_actions' for parameter docs."
 
@@ -81,6 +119,26 @@ async def util(
 ) -> dict:
     if action == "list_actions":
         return {"success": True, "domain": "util", "actions": CATALOG["util"]}
+
+    if action == "search_actions":
+        try:
+            return _discovery.search(**params)
+        except TypeError as exc:
+            return error_result(
+                code="INVALID_INPUT",
+                message=str(exc),
+                path="params",
+                hint="Call util.describe_action for util.search_actions.",
+            ).model_dump(mode="json")
+
+    if action == "describe_action":
+        return _discovery.describe(params.get("domain", ""), params.get("action", ""))
+
+    if action == "get_capabilities":
+        async def load_project_info():
+            return await send_to_unreal(_module("util"), "ue_get_project_info", {})
+
+        return await _discovery.get_capabilities(load_project_info)
 
     if action == "execute_python":
         code = params.get("code", "")

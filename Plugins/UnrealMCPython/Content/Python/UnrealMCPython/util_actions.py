@@ -281,15 +281,40 @@ def ue_set_log_verbosity(category: str = None, verbosity: str = None) -> str:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
 
 
-def ue_get_project_info() -> str:
-    """Returns project name, directories, and engine version."""
+def _is_plugin_enabled(plugin_name: str) -> bool:
+    """Query the reflected plugin manager without changing plugin state."""
+    library = getattr(unreal, "PluginBlueprintLibrary", None)
+    checker = getattr(library, "is_plugin_enabled", None)
+    if not callable(checker):
+        return False
     try:
+        return bool(checker(plugin_name))
+    except Exception:
+        return False
+
+
+def ue_get_project_info() -> str:
+    """Returns project, engine, plugin, and editor capability information."""
+    try:
+        enhanced_input = _is_plugin_enabled("EnhancedInput") or (
+            hasattr(unreal, "InputAction") and hasattr(unreal, "InputMappingContext")
+        )
+        umg = _is_plugin_enabled("UMG") or hasattr(unreal, "WidgetBlueprint")
+        python_plugin = _is_plugin_enabled("PythonScriptPlugin") or hasattr(
+            unreal, "PythonScriptLibrary"
+        )
         return json.dumps({
             "success": True,
             "project_name": unreal.SystemLibrary.get_game_name(),
             "project_dir": unreal.Paths.project_dir(),
             "content_dir": unreal.Paths.project_content_dir(),
             "engine_version": unreal.SystemLibrary.get_engine_version(),
+            "availability": {
+                "enhanced_input": enhanced_input,
+                "umg": umg,
+                "python_script_plugin": python_plugin,
+                "live_coding": hasattr(unreal, "MCPythonHelper"),
+            },
         })
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
@@ -349,7 +374,7 @@ ACTION_METADATA = {'execute_console_command': {'description': "Executes an edito
                     'supports_undo': False,
                     'title': 'Get Output Log',
                     'ue_versions': ['5.6', '5.7', '5.8']},
- 'get_project_info': {'description': 'Returns project name, directories, and engine version.',
+ 'get_project_info': {'description': 'Returns project, engine, plugin, and editor capability information.',
                       'effect': 'read',
                       'idempotent': True,
                       'required_plugins': [],
