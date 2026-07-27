@@ -52,7 +52,7 @@ def test_entrypoints_import():
 
 def test_domain_tools_match_catalog():
     """Exactly one MCP tool per catalog domain — no more, no less."""
-    tools = disp.dispatcher_mcp._tool_manager.list_tools()
+    tools = run(disp.dispatcher_mcp.list_tools())
     names = sorted(t.name for t in tools)
     assert names == sorted(CATALOG.keys())
 
@@ -130,7 +130,7 @@ def test_util_execute_python(monkeypatch):
         return {"success": True}
 
     monkeypatch.setattr(disp, "send_python_exec", fake_exec)
-    result = run(disp.util.fn(action="execute_python", params={"code": "import unreal"}))
+    result = run(disp.util(action="execute_python", params={"code": "import unreal"}))
     assert result["success"] is True
     assert seen["code"] == "import unreal"
 
@@ -140,7 +140,7 @@ def test_util_execute_python_requires_code(monkeypatch):
         raise AssertionError("should not be called when code is missing")
 
     monkeypatch.setattr(disp, "send_python_exec", fake_exec)
-    result = run(disp.util.fn(action="execute_python", params={}))
+    result = run(disp.util(action="execute_python", params={}))
     assert result["success"] is False
     assert "code is required" in result["message"]
 
@@ -153,25 +153,25 @@ def test_util_livecoding_compile(monkeypatch):
         return {"success": True}
 
     monkeypatch.setattr(disp, "send_livecoding_compile", fake_compile)
-    result = run(disp.util.fn(action="livecoding_compile", params={}))
+    result = run(disp.util(action="livecoding_compile", params={}))
     assert result["success"] is True
     assert called["n"] == 1
 
 
 def test_util_get_output_log_routes_to_ue_function(recorder):
-    run(disp.util.fn(action="get_output_log", params={"line_count": 20}))
+    run(disp.util(action="get_output_log", params={"line_count": 20}))
     assert recorder == [
         ("UnrealMCPython.util_actions", "ue_get_output_log", {"line_count": 20})
     ]
 
 
 def test_util_list_actions(recorder):
-    result = run(disp.util.fn(action="list_actions", params={}))
+    result = run(disp.util(action="list_actions", params={}))
     assert result["actions"] == CATALOG["util"]
     assert recorder == []
 
 
 def test_util_unknown_action(recorder):
-    result = run(disp.util.fn(action="nope", params={}))
+    result = run(disp.util(action="nope", params={}))
     assert result["success"] is False
     assert "Unknown action" in result["message"]

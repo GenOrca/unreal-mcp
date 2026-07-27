@@ -1,0 +1,506 @@
+[
+  {
+    "description": "Unreal actor tools. Actions: add_actor_tag, attach_actor, delete_by_label, detach_actor, duplicate_actor, duplicate_selected, get_actor_bounds, get_actor_folder, get_actor_tags, get_actors_of_class, get_all_details, get_attached_actors, get_component_property, get_in_view_frustum, get_property, get_selected_actors, get_transform, invert_selection, line_trace, list_actor_components, list_all_with_locations, remove_actor_tag, rename_actor, select_actors, select_all, set_actor_folder, set_actor_hidden, set_component_property, set_location, set_property, set_rotation, set_scale, set_transform, spawn_from_class, spawn_from_object, spawn_on_surface_raycast. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "actor"
+  },
+  {
+    "description": "Unreal anim_blueprint tools. Actions: add_anim_graph_sequence_player, build_anim_state_machine, create_anim_blueprint, get_anim_blueprint_info. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "anim_blueprint"
+  },
+  {
+    "description": "Unreal animation tools. Actions: add_float_curve, add_notify_track, add_socket, add_sync_marker, find_socket, get_anim_sequence_info, get_skeletal_mesh_info, get_skeleton_info, list_bones, list_curves, list_notifies, list_notify_tracks, list_sockets, list_sync_markers, remove_curve, remove_notify_track, remove_socket. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "animation"
+  },
+  {
+    "description": "Unreal asset tools. Actions: asset_exists, delete_asset, delete_directory, duplicate_asset, export_fbx, find_by_query, find_referencers, get_asset_info, get_dependencies, get_gltf_import_status, get_metadata_tag, get_static_mesh_details, import_fbx, import_gltf, import_texture, list_assets, make_directory, remove_metadata_tag, rename_asset, save_asset, set_metadata_tag. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "asset"
+  },
+  {
+    "description": "Unreal behavior_tree tools. Actions: add_blackboard_key, build_behavior_tree, create_behavior_tree, create_blackboard, get_behavior_tree_structure, get_blackboard_data, get_bt_node_details, get_selected_bt_nodes, list_behavior_trees, list_bt_node_classes, remove_blackboard_key, set_blackboard_to_behavior_tree. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "behavior_tree"
+  },
+  {
+    "description": "Unreal blueprint tools. Actions: add_blueprint_node, add_component_to_blueprint, add_variable, auto_layout_graph, build_blueprint_graph, compile_blueprint, connect_blueprint_pins, create_blueprint, get_blueprint_graph_info, get_selected_bp_node_infos, get_selected_bp_nodes, list_blueprint_components, list_blueprint_variables, list_callable_functions, remove_blueprint_node, remove_component_from_blueprint, set_blueprint_node_position, set_component_property, set_variable_flags. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "blueprint"
+  },
+  {
+    "description": "Unreal control_rig tools. Actions: add_rig_bone, add_rig_null, add_unit_node, create_control_rig, get_control_rig_info, recompile_control_rig. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "control_rig"
+  },
+  {
+    "description": "Unreal data_table tools. Actions: create_data_table, does_row_exist, export_to_csv, get_column_names, get_row_names, get_rows_as_json, remove_row, set_rows_from_json. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "data_table"
+  },
+  {
+    "description": "Unreal editor tools. Actions: close_asset_editor, create_proxy_actor, get_open_assets, get_selected_assets, join_actors, merge_actors, open_editor_for_asset, replace_mesh_on_selected, replace_mesh_on_specified, replace_mtl_on_selected, replace_mtl_on_specified, replace_selected_with_bp. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "editor"
+  },
+  {
+    "description": "Unreal game tools. Actions: add_input_action, add_input_mapping, set_game_mode. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "game"
+  },
+  {
+    "description": "Unreal gas tools. Actions: add_effect_modifier, add_gameplay_tag, clear_effect_modifiers, create_ability_blueprint, create_effect_blueprint, get_ability_info, get_effect_info, list_gameplay_tags, set_ability_costs, set_ability_tags, set_effect_duration. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "gas"
+  },
+  {
+    "description": "Unreal layer tools. Actions: add_actor_to_layer, create_layer, delete_layer, get_actors_in_layer, list_layers, remove_actor_from_layer. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "layer"
+  },
+  {
+    "description": "Unreal level tools. Actions: create_level, get_current_level_path, list_level_actors, load_level, save_all_levels, save_current_level, set_world_settings. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "level"
+  },
+  {
+    "description": "Unreal level_sequence tools. Actions: add_anim_track, add_camera, add_possessable, add_spawnable_from_class, add_transform_keyframe, add_transform_track, close_sequencer, convert_binding, create_level_sequence, get_sequence_info, open_in_sequencer, remove_binding, set_playback_range. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "level_sequence"
+  },
+  {
+    "description": "Unreal material tools. Actions: connect_expressions, connect_property, create_expression, create_material, create_material_instance, delete_expression, get_material_info, get_mi_scalar_param, get_mi_static_switch, get_mi_texture_param, get_mi_vector_param, layout_expressions, list_parameters, recompile, set_expression_property, set_instance_parent, set_mi_scalar_param, set_mi_static_switch, set_mi_texture_param, set_mi_vector_param. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "material"
+  },
+  {
+    "description": "Unreal retarget tools. Actions: add_retarget_chain, auto_map_chains, batch_retarget, create_ik_rig, create_retargeter, get_ik_rig_info. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "retarget"
+  },
+  {
+    "description": "Unreal static_mesh tools. Actions: add_simple_collision, get_collision_info, get_lod_screen_sizes, get_static_mesh_info, list_static_mesh_materials, remove_collisions, remove_lods, set_convex_collision, set_lod_for_collision, set_lod_from_static_mesh, set_lods, set_static_mesh_material. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "static_mesh"
+  },
+  {
+    "description": "Unreal texture tools. Actions: get_texture_info, set_texture_compression, set_texture_srgb. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "texture"
+  },
+  {
+    "description": "Unreal umg tools. Actions: add_widget, bind_widget_event, compile_widget_blueprint, create_widget_blueprint, get_widget_blueprint_info, get_widget_property, list_widget_events, remove_widget, reparent_widget, replace_widget, set_slot_layout, set_text_style, set_widget_properties, set_widget_property, wrap_widget. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters (keys must match the action's documented params).",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "umg"
+  },
+  {
+    "description": "Unreal util tools. Actions: execute_console_command, execute_python, get_cvar, get_output_log, get_project_info, get_viewport_camera, is_in_pie, list_class_properties, list_enum_values, livecoding_compile, print_message, save_all_dirty, screen_to_world, set_cvar, set_log_verbosity, set_viewport_camera, start_pie, stop_pie, world_to_screen. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters. execute_python: {code}. get_output_log: {line_count, keyword}.",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "util"
+  },
+  {
+    "description": "Unreal vision tools. Actions: capture_actors, capture_from, capture_viewport. Pass action='list_actions' for parameter docs.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action name. Use 'list_actions' for full parameter docs.",
+          "title": "Action",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "description": "Action parameters. capture_viewport: {width, height, fov}.",
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "name": "vision"
+  }
+]

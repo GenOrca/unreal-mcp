@@ -13,7 +13,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 dependencies = [
-    "fastmcp",
+    "fastmcp[tasks]==3.2.4",
+    "jsonschema>=4.23,<5",
+    "pydantic>=2.11,<3",
 ]
 
 [project.scripts]
@@ -21,7 +23,8 @@ unrealmcp = "unreal_mcp.main:main"
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.1",
 ]
 
 [tool.setuptools]
@@ -32,3 +35,4 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"

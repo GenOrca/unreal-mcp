@@ -11,8 +11,8 @@ from fastmcp import Client
 
 async def test_server():
     print("Testing Unreal MCP Server...")
-    tools = await main_mcp.get_tools()
-    print(f"Available tools: {list(tools.keys())}")
+    tools = await main_mcp.list_tools()
+    print(f"Available tools: {[tool.name for tool in tools]}")
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--test":

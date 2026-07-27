@@ -122,7 +122,7 @@ def test_list_actions_offline_path_still_works():
 
 def test_execute_python_round_trip():
     """execute_python runs real Unreal Python through the chain."""
-    r = run(disp.util.fn(action="execute_python",
+    r = run(disp.util(action="execute_python",
                          params={"code": "print('e2e_marker_42')"}))
     # send_python_exec returns the raw wrapper; the printed marker is in 'result'.
     blob = r.get("result", "") + r.get("message", "")
@@ -131,8 +131,8 @@ def test_execute_python_round_trip():
 
 def test_vision_capture_returns_image():
     """vision capture_viewport returns an MCP Image (PNG) through the full chain."""
-    from fastmcp import Image
-    r = run(disp.vision.fn(action="capture_viewport", params={"width": 320, "height": 180}))
+    from fastmcp.utilities.types import Image
+    r = run(disp.vision(action="capture_viewport", params={"width": 320, "height": 180}))
     assert isinstance(r, Image), f"expected an Image, got {type(r).__name__}: {r}"
     # the PNG bytes should carry a valid signature
     data = getattr(r, "data", b"")
@@ -155,7 +155,7 @@ def test_gltf_import_round_trip():
         "ok = unreal.Exporter.run_asset_export_task(t)\n"
         "print('GLBPATH=' + glb if (ok and os.path.isfile(glb)) else 'GLBFAIL')\n"
     )
-    r = run(disp.util.fn(action="execute_python", params={"code": export_code}))
+    r = run(disp.util(action="execute_python", params={"code": export_code}))
     blob = (r.get("result", "") or "") + (r.get("message", "") or "")
     assert "GLBPATH=" in blob, f"glb export failed: {blob[:300]}"
     glb = blob.split("GLBPATH=", 1)[1].split()[0].strip().strip('"')
@@ -178,7 +178,7 @@ def test_gltf_import_round_trip():
         classes = [a["class"] for a in st["imported_assets"]]
         assert "StaticMesh" in classes, f"no StaticMesh among imported: {st}"
     finally:
-        run(disp.util.fn(action="execute_python", params={
+        run(disp.util(action="execute_python", params={
             "code": f"import unreal; unreal.EditorAssetLibrary.delete_directory('{dest}')"}))
 
 
@@ -207,9 +207,9 @@ def test_every_action_round_trips(domain, action):
     params before doing work.
     """
     if domain == "util":
-        r = run(disp.util.fn(action=action, params={}))
+        r = run(disp.util(action=action, params={}))
     elif domain == "vision":
-        r = run(disp.vision.fn(action=action, params={}))
+        r = run(disp.vision(action=action, params={}))
     else:
         r = run(disp._dispatch(domain, action, {}))
     assert isinstance(r, dict), f"{domain}.{action} returned non-dict: {r!r}"

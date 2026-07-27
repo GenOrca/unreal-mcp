@@ -15,14 +15,15 @@ no hand transcription. This file never grows when actions are added.
 import base64
 from typing import Annotated
 from pydantic import Field
-from fastmcp import FastMCP, Image
+from fastmcp import FastMCP
+from fastmcp.utilities.types import Image
 
 from unreal_mcp.core import send_to_unreal, UnrealExecutionError, send_python_exec, send_livecoding_compile
 from unreal_mcp.dispatchers._catalog import CATALOG
 
 dispatcher_mcp = FastMCP(
     name="UnrealMCP",
-    description=(
+    instructions=(
         "Unreal Engine MCP via namespace dispatchers. "
         "Each domain tool accepts (action, params). "
         "Pass action='list_actions' to any tool to get available actions and parameter docs."
