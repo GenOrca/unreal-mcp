@@ -17,10 +17,12 @@ Run:
 
 import asyncio
 import socket
+from uuid import uuid4
 
 import pytest
 
 import unreal_mcp.dispatcher as disp
+from unreal_mcp.core import send_to_unreal
 from unreal_mcp.dispatchers._catalog import CATALOG
 
 HOST, PORT = "127.0.0.1", 12029
@@ -210,11 +212,130 @@ def test_every_action_round_trips(domain, action):
         r = run(disp.util(action=action, params={}))
     elif domain == "vision":
         r = run(disp.vision(action=action, params={}))
+    elif domain == "workflow":
+        r = run(disp.workflow(action=action, params={}))
     else:
         r = run(disp._dispatch(domain, action, {}))
     assert isinstance(r, dict), f"{domain}.{action} returned non-dict: {r!r}"
     assert "success" in r, f"chain/unwrap failed for {domain}.{action}: {r!r}"
     _assert_not_connection_error(r, f"{domain}.{action}")
+
+
+def test_workflow_plan_apply_undo_round_trip():
+    """A live workflow commits an actor transform, exposes undo metadata, and cleans its lease."""
+    actor_label = None
+    spawn_location = [812345.0, -812345.0, 34567.0]
+    try:
+        spawn = run(disp._dispatch(
+            "actor",
+            "spawn_from_class",
+            {
+                "class_path": "/Script/Engine.PointLight",
+                "location": spawn_location,
+            },
+        ))
+        assert spawn.get("success") is True, spawn
+        actor_label = spawn.get("actor_label")
+        assert actor_label, spawn
+
+        distinct_label = f"MCP_Workflow_E2E_Disposable_{uuid4().hex}"
+        renamed = run(disp._dispatch(
+            "actor",
+            "rename_actor",
+            {"actor_label": actor_label, "new_label": distinct_label},
+        ))
+        assert renamed.get("success") is True, renamed
+        actor_label = renamed["new_label"]
+
+        original = run(disp._dispatch(
+            "actor", "get_transform", {"actor_label": actor_label}
+        ))
+        assert original.get("success") is True, original
+        target_location = [
+            original["location"][0] + 1111.0,
+            original["location"][1] + 2222.0,
+            original["location"][2] + 3333.0,
+        ]
+
+        planned = run(disp.workflow(action="plan", params={
+            "operations": [
+                {
+                    "id": "move-disposable-actor",
+                    "domain": "actor",
+                    "action": "set_transform",
+                    "params": {
+                        "actor_label": actor_label,
+                        "location": target_location,
+                        "rotation": original["rotation"],
+                        "scale": original["scale"],
+                    },
+                }
+            ]
+        }))
+        assert planned.get("success") is True, planned
+        plan_id = planned["data"]["workflow_id"]
+        confirmation_token = planned["data"]["confirmation_token"]
+
+        applied = run(disp.workflow(action="apply", params={
+            "plan_id": plan_id,
+            "confirmation_token": confirmation_token,
+            "wait_for_completion": True,
+        }))
+        assert applied.get("success") is True, applied
+        assert applied.get("status") in {"succeeded", "needs_attention"}, applied
+
+        moved = run(disp._dispatch(
+            "actor", "get_transform", {"actor_label": actor_label}
+        ))
+        assert moved.get("success") is True, moved
+        assert moved["location"] == pytest.approx(target_location, abs=0.001)
+
+        commit = applied["data"]
+        undo_token = commit.get("undo_token")
+        expects_undo_token = (
+            commit.get("transaction_recorded") is True
+            and commit.get("undo_available") is True
+        )
+        assert bool(undo_token) is expects_undo_token, applied
+
+        if undo_token:
+            undone = run(disp.workflow(action="undo", params={
+                "plan_id": plan_id,
+                "undo_token": undo_token,
+            }))
+            assert undone.get("success") is True, undone
+            assert undone.get("data", {}).get("undone") is True, undone
+
+            restored = run(disp._dispatch(
+                "actor", "get_transform", {"actor_label": actor_label}
+            ))
+            assert restored.get("success") is True, restored
+            for field in ("location", "rotation", "scale"):
+                assert restored[field] == pytest.approx(original[field], abs=0.001)
+
+        current = run(disp.workflow(
+            action="get", params={"plan_id": plan_id}
+        ))
+        assert current.get("success") is True, current
+        assert current["data"]["workflow"]["id"] == plan_id
+        assert current["data"]["workflow"]["status"] == applied["status"]
+        if undo_token:
+            assert current["data"]["workflow"]["undo_token"] == ""
+
+        context = run(send_to_unreal(
+            "UnrealMCPython.workflow_actions",
+            "ue_get_editor_context",
+            {"asset_paths": []},
+        ))
+        assert context.get("success") is True, context
+        lease = context["workflow_transaction"]
+        assert lease["active"] is False, lease
+        assert lease["watchdog_registered"] is False, lease
+    finally:
+        if actor_label:
+            run(disp._dispatch(
+                "actor", "delete_by_label", {"actor_label": actor_label}
+            ))
 
 
 def test_zzz_editor_survived_suite():
