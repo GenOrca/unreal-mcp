@@ -85,6 +85,7 @@ class WorkflowPlan(BaseModel):
     project_id: str
     editor_session_id: str
     current_map: str
+    allow_non_undoable: bool = False
     steps: list[PlanStep] = Field(default_factory=list)
     asset_fingerprints: dict[str, AssetFingerprint] = Field(default_factory=dict)
     predicted_changes: list[ChangeRecord] = Field(default_factory=list)
