@@ -41,12 +41,16 @@ domain(action: str, params: dict = {})
 
 Existing actions continue to return their current top-level fields. New metadata may be added under a reserved `_meta` object, but existing fields will not be moved or renamed. New actions use the structured result contract defined below.
 
-The server has two safety modes:
+The server has two safety modes, selected by
+`UNREAL_MCP_SAFETY_MODE=compatible|strict`. An unknown value fails server
+startup with a configuration error:
 
 - `compatible`: legacy direct actions execute with their current behavior. New workflow actions are always safe.
 - `strict`: write and destructive actions must be executed through an approved workflow plan.
 
-Existing installations default to `compatible` during the migration period. New installation examples and documentation recommend `strict`. The mode is selected at server startup and is returned by the health/capabilities response.
+The process default is `compatible` so an upgrade does not silently change the
+behavior of an existing installation. New installation examples explicitly set
+`strict`. The selected mode is returned by the health/capabilities response.
 
 ## Chosen approach
 
@@ -79,7 +83,18 @@ LLM / MCP client
 
 ### Action Registry v2
 
-`generate_catalog.py` will produce a richer generated registry from function signatures, type annotations, docstrings, and explicit per-action metadata. It will also render the current legacy `CATALOG` shape so existing code remains compatible.
+`generate_catalog.py` will produce a richer generated registry from function
+signatures, type annotations, docstrings, and explicit per-action metadata. Each
+`*_actions.py` module will contain an AST-readable, literal
+`ACTION_METADATA` mapping keyed by the action name without the `ue_` prefix.
+The generator reads this mapping without importing Unreal modules. The initial
+registry migration covers every existing action; subsequent generation fails if
+an action is missing metadata or metadata exists without a matching backend.
+Dispatcher-only operations such as raw Python execution and Live Coding are
+declared in a server-side `SPECIAL_ACTION_SPECS` mapping and are validated
+against their registered handlers instead of a `ue_*` function.
+The generator will also render the current legacy `CATALOG` shape so existing
+code remains compatible.
 
 Each `ActionSpec` contains:
 
@@ -89,6 +104,7 @@ Each `ActionSpec` contains:
   "action": "create_function",
   "title": "Create Blueprint function",
   "description": "Create a function graph with a typed signature.",
+  "result_kind": "json",
   "input_schema": {},
   "output_schema": {},
   "effect": "write",
@@ -104,7 +120,16 @@ Each `ActionSpec` contains:
 }
 ```
 
-Allowed effects are `read`, `write`, and `destructive`. Allowed risks are `low`, `medium`, and `high`. Registry generation fails when a new action lacks required metadata or has a schema that cannot be generated.
+Allowed effects are `read`, `write`, and `destructive`. Allowed risks are `low`,
+`medium`, and `high`. Allowed result kinds are `json`, `image`, `text`, and
+`mixed`. Input schemas are generated for all actions. New JSON actions must
+define a specific output schema. Existing JSON actions may initially use a
+compatibility output schema that requires `success`, permits their current
+additional fields, and is replaced with a specific schema as that action is
+migrated. Image and mixed-content actions such as viewport capture declare their
+MCP content type instead of pretending to return a JSON object. Registry
+generation fails when an action lacks required effect/risk/result metadata or
+has an input schema that cannot be generated.
 
 ### Discovery surface
 
@@ -123,7 +148,9 @@ All new actions pass through one pipeline:
 1. Resolve the action from the registry.
 2. Validate input against the generated JSON Schema.
 3. Check Unreal version, required plugin capabilities, safety mode, and risk policy.
-4. Dispatch a read immediately or hand a mutation to the workflow layer.
+4. Dispatch a read immediately or hand a mutation to the workflow layer. In
+   strict mode, a direct legacy mutation returns `CONFIRMATION_REQUIRED` with a
+   ready-to-plan operation rather than executing it.
 5. Normalize the result without removing legacy fields.
 6. Run declared postconditions and return verification details.
 
@@ -141,7 +168,16 @@ Add one namespace tool named `workflow`, following the same `(action, params)` c
 - `plan_gameplay_foundation`: create the canonical gameplay-foundation plan from a compact spec.
 - `verify_gameplay_foundation`: inspect an existing foundation and report drift or missing pieces.
 
-Long-running workflows report MCP progress notifications where supported. Status polling remains available through `workflow/get` for all clients.
+`workflow/plan` can wrap any registry action, including legacy write actions, so
+strict mode does not make old functionality unreachable.
+
+`workflow/apply` starts execution on the server's workflow executor and returns a
+`workflow_id` with status `running` instead of holding the namespace tool call
+open for the entire Unreal operation. Clients with MCP task support receive a
+corresponding MCP task and progress notifications. Other clients poll
+`workflow/get`. This background boundary allows `workflow/cancel` to be accepted
+while execution is in progress; Unreal mutations themselves still run on the
+editor thread one atomic step at a time.
 
 ## Structured result contract
 
@@ -365,4 +401,3 @@ Each stage must pass its offline and applicable in-editor gates before the next 
 - Flopperam Unreal Engine MCP behavioral reference: https://github.com/flopperam/unreal-engine-mcp
 - Model Context Protocol specification, 2025-11-25: https://modelcontextprotocol.io/specification/2025-11-25
 - Unreal Engine Python API: https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/
-
