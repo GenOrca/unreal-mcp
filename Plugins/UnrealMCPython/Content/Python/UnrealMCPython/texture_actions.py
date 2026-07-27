@@ -73,3 +73,45 @@ def ue_set_texture_compression(asset_path: str = None, compression: str = None) 
         return json.dumps({"success": True, "asset_path": asset_path, "compression": key})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# Literal metadata consumed by mcp-server/generate_catalog.py.
+ACTION_METADATA = {'get_texture_info': {'asset_path_params': ['asset_path'],
+                      'description': 'Returns size, memory, sRGB, and compression settings of a '
+                                     'Texture2D.',
+                      'effect': 'read',
+                      'idempotent': True,
+                      'required_plugins': [],
+                      'requires_confirmation': False,
+                      'result_kind': 'json',
+                      'risk': 'low',
+                      'supports_preview': False,
+                      'supports_undo': False,
+                      'title': 'Get Texture Info',
+                      'ue_versions': ['5.6', '5.7', '5.8']},
+ 'set_texture_compression': {'asset_path_params': ['asset_path'],
+                             'description': 'Sets the compression settings of a Texture2D (e.g. '
+                                            "'TC_DEFAULT', 'TC_NORMALMAP', 'TC_MASKS', "
+                                            "'TC_GRAYSCALE').",
+                             'effect': 'write',
+                             'idempotent': False,
+                             'required_plugins': [],
+                             'requires_confirmation': True,
+                             'result_kind': 'json',
+                             'risk': 'medium',
+                             'supports_preview': True,
+                             'supports_undo': True,
+                             'title': 'Set Texture Compression',
+                             'ue_versions': ['5.6', '5.7', '5.8']},
+ 'set_texture_srgb': {'asset_path_params': ['asset_path'],
+                      'description': 'Sets the sRGB flag on a Texture2D.',
+                      'effect': 'write',
+                      'idempotent': False,
+                      'required_plugins': [],
+                      'requires_confirmation': True,
+                      'result_kind': 'json',
+                      'risk': 'medium',
+                      'supports_preview': True,
+                      'supports_undo': True,
+                      'title': 'Set Texture Srgb',
+                      'ue_versions': ['5.6', '5.7', '5.8']}}

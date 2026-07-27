@@ -149,3 +149,62 @@ def ue_build_anim_state_machine(asset_path: str = None, spec: dict = None) -> st
         return result_json
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# Literal metadata consumed by mcp-server/generate_catalog.py.
+ACTION_METADATA = {'add_anim_graph_sequence_player': {'asset_path_params': ['asset_path', 'anim_sequence_path'],
+                                    'description': 'Adds a looping Sequence Player to the '
+                                                   'AnimGraph, optionally wired to the Output '
+                                                   'Pose.',
+                                    'effect': 'write',
+                                    'idempotent': False,
+                                    'required_plugins': [],
+                                    'requires_confirmation': True,
+                                    'result_kind': 'json',
+                                    'risk': 'medium',
+                                    'supports_preview': True,
+                                    'supports_undo': True,
+                                    'title': 'Add Anim Graph Sequence Player',
+                                    'ue_versions': ['5.6', '5.7', '5.8']},
+ 'build_anim_state_machine': {'asset_path_params': ['asset_path'],
+                              'description': 'Builds an arbitrary AnimGraph state machine from a '
+                                             'spec: states[{name,anim?}], entry?, '
+                                             'transitions[{from,to,var?,op?,value?}].',
+                              'effect': 'destructive',
+                              'idempotent': False,
+                              'required_plugins': [],
+                              'requires_confirmation': True,
+                              'result_kind': 'json',
+                              'risk': 'high',
+                              'supports_preview': True,
+                              'supports_undo': False,
+                              'title': 'Build Anim State Machine',
+                              'ue_versions': ['5.6', '5.7', '5.8']},
+ 'create_anim_blueprint': {'asset_path_params': ['asset_path',
+                                                 'skeleton_path',
+                                                 'parent_class_path'],
+                           'description': 'Creates an Animation Blueprint bound to a Skeleton '
+                                          '(parent defaults to AnimInstance).',
+                           'effect': 'write',
+                           'idempotent': False,
+                           'required_plugins': [],
+                           'requires_confirmation': True,
+                           'result_kind': 'json',
+                           'risk': 'medium',
+                           'supports_preview': True,
+                           'supports_undo': True,
+                           'title': 'Create Anim Blueprint',
+                           'ue_versions': ['5.6', '5.7', '5.8']},
+ 'get_anim_blueprint_info': {'asset_path_params': ['asset_path'],
+                             'description': "Returns an AnimBlueprint's target skeleton, generated "
+                                            'class, and graph names.',
+                             'effect': 'read',
+                             'idempotent': True,
+                             'required_plugins': [],
+                             'requires_confirmation': False,
+                             'result_kind': 'json',
+                             'risk': 'low',
+                             'supports_preview': False,
+                             'supports_undo': False,
+                             'title': 'Get Anim Blueprint Info',
+                             'ue_versions': ['5.6', '5.7', '5.8']}}

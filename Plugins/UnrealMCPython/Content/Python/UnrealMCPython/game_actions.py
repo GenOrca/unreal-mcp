@@ -295,3 +295,44 @@ def ue_add_input_mapping(mapping_context_path: str = None,
         tb_str = traceback.format_exc()
         unreal.log_error(f"Error in ue_add_input_mapping: {str(e)}\n{tb_str}")
         return json.dumps({"success": False, "message": str(e), "traceback": tb_str})
+
+
+# Literal metadata consumed by mcp-server/generate_catalog.py.
+ACTION_METADATA = {'add_input_action': {'asset_path_params': ['asset_path'],
+                      'description': 'Creates a new Enhanced Input Action asset.',
+                      'effect': 'write',
+                      'idempotent': False,
+                      'required_plugins': ['EnhancedInput'],
+                      'requires_confirmation': True,
+                      'result_kind': 'json',
+                      'risk': 'medium',
+                      'supports_preview': True,
+                      'supports_undo': True,
+                      'title': 'Add Input Action',
+                      'ue_versions': ['5.6', '5.7', '5.8']},
+ 'add_input_mapping': {'asset_path_params': ['mapping_context_path', 'action_path'],
+                       'description': 'Creates/updates an InputMappingContext with a key-to-action '
+                                      'mapping.',
+                       'effect': 'write',
+                       'idempotent': False,
+                       'required_plugins': ['EnhancedInput'],
+                       'requires_confirmation': True,
+                       'result_kind': 'json',
+                       'risk': 'medium',
+                       'supports_preview': True,
+                       'supports_undo': True,
+                       'title': 'Add Input Mapping',
+                       'ue_versions': ['5.6', '5.7', '5.8']},
+ 'set_game_mode': {'asset_path_params': ['game_mode_class_path'],
+                   'description': "Sets the GameMode Override on the current level's World "
+                                  'Settings.',
+                   'effect': 'destructive',
+                   'idempotent': False,
+                   'required_plugins': [],
+                   'requires_confirmation': True,
+                   'result_kind': 'json',
+                   'risk': 'high',
+                   'supports_preview': True,
+                   'supports_undo': False,
+                   'title': 'Set Game Mode',
+                   'ue_versions': ['5.6', '5.7', '5.8']}}

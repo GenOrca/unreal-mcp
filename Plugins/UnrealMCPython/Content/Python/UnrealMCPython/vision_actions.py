@@ -190,3 +190,42 @@ def ue_capture_actors(actor_labels: list = None, width: int = 1280, height: int 
                            "camera_rotation": [round(rot.pitch, 2), round(rot.yaw, 2), round(rot.roll, 2)]})
     except Exception as e:
         return json.dumps({"success": False, "message": str(e), "traceback": traceback.format_exc()})
+
+
+# Literal metadata consumed by mcp-server/generate_catalog.py.
+ACTION_METADATA = {'capture_actors': {'description': 'Frames the given actors (by label) from an elevated 3/4 view '
+                                   'and captures them.',
+                    'effect': 'read',
+                    'idempotent': True,
+                    'required_plugins': [],
+                    'requires_confirmation': False,
+                    'result_kind': 'image',
+                    'risk': 'low',
+                    'supports_preview': False,
+                    'supports_undo': False,
+                    'title': 'Capture Actors',
+                    'ue_versions': ['5.6', '5.7', '5.8']},
+ 'capture_from': {'description': 'Captures the scene from an explicit camera pose. '
+                                 'location=[x,y,z], rotation=[pitch,yaw,roll].',
+                  'effect': 'read',
+                  'idempotent': True,
+                  'required_plugins': [],
+                  'requires_confirmation': False,
+                  'result_kind': 'image',
+                  'risk': 'low',
+                  'supports_preview': False,
+                  'supports_undo': False,
+                  'title': 'Capture From',
+                  'ue_versions': ['5.6', '5.7', '5.8']},
+ 'capture_viewport': {'description': 'Captures the active level viewport (3D scene only) as a PNG, '
+                                     "returned base64 in 'image_data'.",
+                      'effect': 'read',
+                      'idempotent': True,
+                      'required_plugins': [],
+                      'requires_confirmation': False,
+                      'result_kind': 'image',
+                      'risk': 'low',
+                      'supports_preview': False,
+                      'supports_undo': False,
+                      'title': 'Capture Viewport',
+                      'ue_versions': ['5.6', '5.7', '5.8']}}
