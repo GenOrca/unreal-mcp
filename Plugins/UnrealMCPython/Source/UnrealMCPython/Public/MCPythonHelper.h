@@ -358,7 +358,29 @@ public:
     static FString GetWorkflowEditorContext(const TArray<FString>& AssetPaths);
 
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
-    static FString BeginWorkflowTransaction(const FString& TransactionId, const FString& Description);
+    static FString BeginWorkflowTransaction(
+        const FString& TransactionId,
+        const FString& Description,
+        int32 TotalSteps = 1,
+        bool bShowDialog = true,
+        float IdleTimeoutSeconds = 60.0f);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString HeartbeatWorkflowTransaction(
+        const FString& TransactionId,
+        int32 CompletedSteps,
+        int32 TotalSteps,
+        const FString& Message,
+        bool bHasSuccessfulWrite);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString BeginWorkflowAtomicStep(const FString& TransactionId);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString EndWorkflowAtomicStep(const FString& TransactionId);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString RequestWorkflowCancellation(const FString& TransactionId);
 
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString CommitWorkflowTransaction(const FString& TransactionId);
