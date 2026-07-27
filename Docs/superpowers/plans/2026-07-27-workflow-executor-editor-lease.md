@@ -60,7 +60,7 @@ The implementation preserves the existing namespace shape `(action, params)`, th
 
 - [ ] **Step 1: Write failing offline wrapper tests**
 
-Extend the fake `MCPythonHelper` with calls named `heartbeat_workflow_transaction`, `begin_workflow_atomic_step`, `end_workflow_atomic_step`, `request_workflow_cancellation_for_testing`, and `expire_workflow_transaction_for_testing`. Add these tests:
+Extend the fake `MCPythonHelper` with calls named `heartbeat_workflow_transaction`, `begin_workflow_atomic_step`, `end_workflow_atomic_step`, and `request_workflow_cancellation`. Add these tests:
 
 ```python
 def test_begin_forwards_lease_configuration(monkeypatch):
@@ -154,10 +154,7 @@ UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
 static FString EndWorkflowAtomicStep(const FString& TransactionId);
 
 UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
-static FString RequestWorkflowCancellationForTesting(const FString& TransactionId);
-
-UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
-static FString ExpireWorkflowTransactionForTesting(const FString& TransactionId);
+static FString RequestWorkflowCancellation(const FString& TransactionId);
 ```
 
 Keep the existing commit, cancel, rollback, and undo signatures unchanged.
@@ -183,7 +180,7 @@ struct FWorkflowLease
     double IdleTimeoutSeconds = 60.0;
     EWorkflowLeasePhase Phase = EWorkflowLeasePhase::Idle;
     bool bHasSuccessfulWrite = false;
-    bool bCancelRequestedForTesting = false;
+    bool bCancelRequested = false;
     TUniquePtr<FScopedSlowTask> SlowTask;
     FTSTicker::FDelegateHandle TickerHandle;
 };
@@ -202,7 +199,7 @@ GWorkflowLease->TickerHandle = FTSTicker::GetCoreTicker().AddTicker(
 
 When `bShowDialog && !FApp::IsUnattended()`, construct `FScopedSlowTask` with `TotalSteps`, call `MakeDialog(true)`, and never show the dialog for unattended execution. Use one `ClearWorkflowLease(bool bRemoveTicker)` helper from commit, cancel, rollback, timeout, and every begin failure after lease allocation. When called by the ticker itself, reset the weak handle and pass `false`; all other terminal paths call `FTSTicker::RemoveTicker` before destroying the slow task.
 
-`HeartbeatWorkflowTransaction` must reject a wrong id, atomic phase, a changed total, decreasing progress, or progress above total. It calls `EnterProgressFrame(CompletedSteps - PreviousCompleted, FText::FromString(Message))` only for a positive delta, calls `TickProgress()`, ORs `bHasSuccessfulWrite`, refreshes `LastHeartbeatSeconds`, and returns:
+`HeartbeatWorkflowTransaction` must reject a wrong id, atomic phase, a changed total, decreasing progress, or progress above total. Before refreshing the lease, it compares the monotonic clock with the idle deadline and calls the same timeout recovery path as the ticker when already expired. Otherwise it calls `EnterProgressFrame(CompletedSteps - PreviousCompleted, FText::FromString(Message))` only for a positive delta, calls `TickProgress()`, ORs `bHasSuccessfulWrite`, refreshes `LastHeartbeatSeconds`, and returns:
 
 ```json
 {
@@ -220,7 +217,7 @@ When `bShowDialog && !FApp::IsUnattended()`, construct `FScopedSlowTask` with `T
 
 - [ ] **Step 5: Implement deterministic timeout recovery**
 
-Both the ticker and `ExpireWorkflowTransactionForTesting` call one `RecoverExpiredWorkflowLease()` function. If phase is atomic, the ticker returns `true` without recovery. Otherwise:
+Both the ticker and an already-expired heartbeat call one `RecoverExpiredWorkflowLease()` function. If phase is atomic, the ticker returns `true` without recovery. Otherwise:
 
 ```cpp
 if (!GWorkflowLease->bHasSuccessfulWrite)
@@ -308,7 +305,7 @@ def ue_execute_step(
     return result if ended.get("success") else json.dumps(ended)
 ```
 
-Add `ue_request_cancel_for_testing` and `ue_expire_transaction_for_testing` as id-validating wrappers around their C++ counterparts. They stay internal because `workflow_actions.py` is not scanned as a catalog domain.
+Add `ue_request_cancel` as an id-validating wrapper around `RequestWorkflowCancellation`. This is a production recovery/cancellation primitive for a connected executor, and it stays internal because `workflow_actions.py` is not scanned as a catalog domain.
 
 - [ ] **Step 7: Add in-editor lease tests**
 
@@ -322,7 +319,7 @@ def test_timeout_after_write_rolls_back_and_unlocks(self): ...
 def test_every_terminal_path_removes_watchdog(self): ...
 ```
 
-Each test begins with `show_dialog=False`. The cancel test calls `ue_request_cancel_for_testing` then asserts the next heartbeat returns `cancel_requested=true`. The no-write timeout asserts `last_recovery.outcome == "cancelled_no_write"`. The write timeout mutates a temporary actor inside the transaction, sends `has_successful_write=true`, calls the deterministic expiry wrapper, and asserts the actor transform is restored and `last_recovery.outcome == "rolled_back"`. Every `finally` block calls cancel only if context still reports `active=true`.
+Each test begins with `show_dialog=False`. The cancel test calls `ue_request_cancel` then asserts the next heartbeat returns `cancel_requested=true`. Timeout tests begin with `idle_timeout_seconds=0.01`, sleep for 0.02 seconds, and call heartbeat; heartbeat must detect expiry before refreshing the deadline and execute the same recovery function used by the ticker. The no-write timeout asserts `last_recovery.outcome == "cancelled_no_write"`. The write timeout mutates a temporary actor inside the transaction, first sends `has_successful_write=true`, waits for expiry, calls heartbeat again, and asserts the actor transform is restored and `last_recovery.outcome == "rolled_back"`. Every `finally` block calls cancel only if context still reports `active=true`.
 
 - [ ] **Step 8: Run offline wrapper tests**
 
